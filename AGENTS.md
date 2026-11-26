@@ -77,7 +77,7 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
   `X21-XXXXXXXX`, descarga el instalador a `%TEMP%\X21 Music Updates` y lo lanza con
   `/X21KEY=<clave>` `/X21MODE=update`. `build/installer.nsh` añade las opciones Instalar,
   Reinstalar, Instalar para todos los usuarios y Actualizar; esta última valida la clave.
-  Versión `pre-alpha 0.9.6` en `src/lib/version.ts` y en `package.json`.
+  Versión `pre-alpha 0.9.8` en `src/lib/version.ts` y en `package.json`.
 - `monoDark` sustituye la paleta por `MONO_PALETTE` y desactiva la imagen de fondo.
 
 ## 5. Paleta desde la portada (reemplaza "Color de acento extraído de la portada")

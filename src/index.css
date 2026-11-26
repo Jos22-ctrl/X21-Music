@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 
+/* El sprite de Vite eliminado generaba esta utilidad; se conserva para no alterar el CSS. */
+@source inline("filter");
+
 /* Tokens registrados: transición de 600 ms al cambiar de canción. */
 @property --c-dominant {
   syntax: '<color>';

@@ -27,6 +27,18 @@ describe('configuración de la versión 0.9.12', () => {
     expect(config).toContain('include: build/installer.nsh')
   })
 
+  it('genera los iconos PWA desde una sola fuente', () => {
+    const config = read('pwa-assets.config.ts')
+    expect(config).toContain("images: ['build/icon.png']")
+    expect((JSON.parse(read('package.json')) as { scripts: Record<string, string> }).scripts.icons).toContain(
+      'pwa-assets-generator',
+    )
+    expect(existsSync(resolve(process.cwd(), 'public/pwa-192x192.png'))).toBe(true)
+    expect(existsSync(resolve(process.cwd(), 'public/pwa-512x512.png'))).toBe(true)
+    expect(existsSync(resolve(process.cwd(), 'public/favicon.ico'))).toBe(false)
+    expect(existsSync(resolve(process.cwd(), 'public/apple-touch-icon-180x180.png'))).toBe(false)
+  })
+
   it('incluye los dos workflows de CI y release', () => {
     const ci = read('.github/workflows/ci.yml')
     expect(ci).toContain('npm run lint')

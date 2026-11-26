@@ -9,6 +9,7 @@
     "dev": "vite",
     "dev:electron": "concurrently -k -n VITE,ELECTRON \"npm:dev\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "tsc -b && vite build",
+    "icons": "pwa-assets-generator && node scripts/copy-pwa-icons.mjs",
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

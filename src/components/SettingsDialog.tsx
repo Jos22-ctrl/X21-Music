@@ -178,7 +178,9 @@ export function SettingsDialog({ tab, onTabChange, onClose }: SettingsDialogProp
               <div className="setting-row">
                 <div className="setting-row__info">
                   <strong>Sin pausa entre canciones</strong>
-                  <small>La siguiente empieza justo al terminar la anterior.</small>
+                  <small>
+                    Suprime la pausa fija de 400 ms. No analiza ni omite silencios dentro del audio.
+                  </small>
                 </div>
                 <Toggle
                   checked={settings.skipSilence}

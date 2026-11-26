@@ -33,7 +33,7 @@ export type PlaybackBarStyle = 'simple' | 'clasico'
 export interface PlaybackSettings {
   /** Segundos de fundido entre pistas; 0 = cambio instantáneo. */
   crossfadeSeconds: number
-  /** Empieza la pista siguiente sin pausa ni silencio intermedio. */
+  /** Quita la pausa fija de 400 ms entre canciones; no detecta silencio en el audio. */
   skipSilence: boolean
   /** Evita añadir dos veces la misma canción (biblioteca y cola). */
   preventDuplicates: boolean

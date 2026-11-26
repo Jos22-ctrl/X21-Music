@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react'
 import type { ReactNode } from 'react'
+import { crossfadeGain, nextTrackId, shouldStartCrossfade } from '../lib/crossfade'
 import { DEFAULT_PALETTE, type Palette } from '../lib/color'
 import {
   deleteTrack,
@@ -136,7 +137,21 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [isHydrated, setIsHydrated] = useState(false)
 
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  // Dos elementos A/B permiten solapar la pista saliente y la entrante.
+  const slotsRef = useRef<{ a: HTMLAudioElement | null; b: HTMLAudioElement | null }>({
+    a: null,
+    b: null,
+  })
+  const activeSlotRef = useRef<'a' | 'b'>('a')
+  const crossfadeRef = useRef<{
+    fromSlot: 'a' | 'b'
+    raf: number | null
+    startedAt: number
+    durationMs: number
+    fromVolume: number
+  } | null>(null)
+  const autoFadeRef = useRef<string | null>(null)
+  const autoFadeCheckRef = useRef<() => void>(() => undefined)
   const urlsRef = useRef<string[]>([])
   const settingsRef = useRef(settings)
   const latestRef = useRef({ tracks, currentId, queueIds, repeatMode, isShuffle, isPlaying })
@@ -147,9 +162,6 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     prev: () => undefined,
   })
   const targetVolumeRef = useRef(clampVolume(0.8) ** 2)
-  const fadeFrameRef = useRef<number | null>(null)
-  const fadingRef = useRef(false)
-  const fadeInRef = useRef(0)
   const pendingRef = useRef<number | null>(null)
   const positionRef = useRef(0)
   const restoredTimeRef = useRef<number | null>(null)
@@ -210,10 +222,23 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const progress = durationSeconds > 0 ? Math.min(1, currentTime / durationSeconds) : 0
   const palette = currentTrack?.palette ?? DEFAULT_PALETTE
 
-  const clearFade = useCallback((): void => {
-    if (fadeFrameRef.current !== null) cancelAnimationFrame(fadeFrameRef.current)
-    fadeFrameRef.current = null
-    fadingRef.current = false
+  const activeAudio = useCallback(() => slotsRef.current[activeSlotRef.current], [])
+  const idleSlot = useCallback((): 'a' | 'b' => (activeSlotRef.current === 'a' ? 'b' : 'a'), [])
+
+  /** Cierra un fundido: calla la pista saliente y deja la activa a su volumen normal. */
+  const finishCrossfade = useCallback((restoreVolume = true): void => {
+    const fade = crossfadeRef.current
+    if (!fade) return
+    if (fade.raf !== null) cancelAnimationFrame(fade.raf)
+    crossfadeRef.current = null
+    const outgoing = slotsRef.current[fade.fromSlot]
+    if (outgoing) {
+      outgoing.pause()
+      outgoing.removeAttribute('src')
+      outgoing.volume = 0
+    }
+    const active = slotsRef.current[activeSlotRef.current]
+    if (active && restoreVolume) active.volume = targetVolumeRef.current
   }, [])
 
   const clearPending = useCallback((): void => {
@@ -223,9 +248,9 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
 
   /** Lee la posición real del audio en el instante del guardado. */
   const readPosition = useCallback((): number => {
-    const value = audioRef.current?.currentTime ?? positionRef.current
+    const value = activeAudio()?.currentTime ?? positionRef.current
     return clampPersistedTime(value)
-  }, [])
+  }, [activeAudio])
 
   const persistSnapshot = useCallback(
     (overrides: Partial<PersistedSnapshot> = {}): PersistedSnapshot =>
@@ -247,47 +272,79 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     [persistSnapshot],
   )
 
-  /** Fundido lineal del volumen actual; se usa para la transición gradual. */
-  const fadeTo = useCallback(
-    (to: number, ms: number, done?: () => void, liveTarget = false): void => {
-      const audio = audioRef.current
-      if (!audio || ms <= 0) {
-        if (audio) audio.volume = liveTarget ? targetVolumeRef.current : to
-        done?.()
-        return
+  /** Arranca la entrante en el elemento libre y funde A/B con potencia constante. */
+  // REQUIERE PRUEBA MANUAL EN WINDOWS: comprobar el solape con canciones reales.
+  const crossfadeTo = useCallback(
+    (track: Track, seconds: number): void => {
+      const from = activeAudio()
+      const fromSlot = activeSlotRef.current
+      const toSlot = idleSlot()
+      const incoming = slotsRef.current[toSlot]
+      finishCrossfade(false)
+      clearPending()
+      if (!from || !incoming) return
+
+      incoming.pause()
+      incoming.src = track.audioUrl
+      incoming.load()
+      incoming.currentTime = 0
+      incoming.volume = 0
+
+      // La interfaz pasa a reflejar la pista entrante desde el primer momento.
+      activeSlotRef.current = toSlot
+      autoFadeRef.current = track.id
+      restoredTimeRef.current = null
+      positionRef.current = 0
+      saveNow({ currentTrackId: track.id, currentTime: 0 })
+      setCurrentId(track.id)
+      setCurrentTime(0)
+      setDuration(track.durationMs / 1000)
+
+      const target = targetVolumeRef.current
+      const fromVolume = from.volume
+      const fade = {
+        fromSlot,
+        raf: null as number | null,
+        startedAt: performance.now(),
+        durationMs: Math.max(1, seconds * 1000),
+        fromVolume,
       }
-      clearFade()
-      fadingRef.current = true
-      const from = audio.volume
-      const started = performance.now()
+      crossfadeRef.current = fade
+
       const step = (): void => {
-        if (!audioRef.current) return
-        const t = Math.min(1, (performance.now() - started) / ms)
-        const end = liveTarget ? targetVolumeRef.current : to
-        audioRef.current.volume = from + (end - from) * t
+        const current = crossfadeRef.current
+        if (!current || current !== fade) return
+        const t = Math.min(1, (performance.now() - current.startedAt) / current.durationMs)
+        const gains = crossfadeGain(t)
+        from.volume = current.fromVolume * gains.from
+        incoming.volume = target * gains.to
         if (t < 1) {
-          fadeFrameRef.current = requestAnimationFrame(step)
+          current.raf = requestAnimationFrame(step)
         } else {
-          fadingRef.current = false
-          fadeFrameRef.current = null
-          done?.()
+          finishCrossfade(true)
         }
       }
       step()
+
+      void incoming.play().catch(() => {
+        setIsPlaying(false)
+        finishCrossfade(true)
+      })
     },
-    [clearFade],
+    [activeAudio, clearPending, finishCrossfade, idleSlot, saveNow],
   )
 
-  /** Cambia de pista aplicando fundido y/o suprimiendo el silencio entre canciones. */
+  /** Cambio manual o automático: fundido si se está reproduciendo, cambio seco si no. */
   const changeTo = useCallback(
     (id: string, shouldPlay: boolean): void => {
-      const audio = audioRef.current
       const prefs = settingsRef.current
+      const active = activeAudio()
+      const track = latestRef.current.tracks.find((item) => item.id === id)
       clearPending()
-      clearFade()
 
       const commit = (): void => {
-        fadeInRef.current = prefs.crossfadeSeconds > 0 && shouldPlay ? prefs.crossfadeSeconds * 500 : 0
+        finishCrossfade(true)
+        autoFadeRef.current = id
         restoredTimeRef.current = null
         positionRef.current = 0
         saveNow({ currentTrackId: id, currentTime: 0 })
@@ -307,68 +364,125 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      if (!audio || !shouldPlay || prefs.crossfadeSeconds <= 0) {
-        withGap(commit)
+      if (track && shouldPlay && prefs.crossfadeSeconds > 0 && active && !active.paused) {
+        crossfadeTo(track, prefs.crossfadeSeconds)
         return
       }
-      fadeTo(0, prefs.crossfadeSeconds * 500, () => withGap(commit))
+      withGap(commit)
     },
-    [clearFade, clearPending, fadeTo, saveNow],
+    [activeAudio, clearPending, crossfadeTo, finishCrossfade, saveNow],
   )
+
+  // Decisión de fundido automático en tiempo real, con la lógica pura de cola.
+  autoFadeCheckRef.current = (): void => {
+    const active = activeAudio()
+    if (!active || crossfadeRef.current || !latestRef.current.isPlaying) return
+    const state = latestRef.current
+    const current = state.tracks.find((track) => track.id === state.currentId)
+    const nextCandidates = {
+      queueIds: state.queueIds,
+      currentId: state.currentId,
+      repeatMode: state.repeatMode,
+      isShuffle: state.isShuffle,
+    }
+    const next = nextTrackId(nextCandidates)
+    const duration =
+      Number.isFinite(active.duration) && active.duration > 0
+        ? active.duration
+        : (current?.durationMs ?? 0) / 1000
+    const seconds = settingsRef.current.crossfadeSeconds
+    if (
+      !shouldStartCrossfade({
+        currentTime: active.currentTime,
+        durationSeconds: duration,
+        crossfadeSeconds: seconds,
+        nextId: next,
+      }) ||
+      autoFadeRef.current === next
+    ) {
+      return
+    }
+    const target = state.tracks.find((track) => track.id === next)
+    if (target) crossfadeTo(target, seconds)
+  }
 
   // --- Motor de audio -----------------------------------------------------
   useEffect(() => {
-    const audio = new Audio()
-    audio.preload = 'metadata'
-    audioRef.current = audio
-    audio.volume = targetVolumeRef.current
-
-    const onTime = (): void => {
-      positionRef.current = clampPersistedTime(audio.currentTime)
-      setCurrentTime(positionRef.current)
+    const createSlot = (): HTMLAudioElement => {
+      const audio = new Audio()
+      audio.preload = 'metadata'
+      audio.volume = targetVolumeRef.current
+      return audio
     }
-    const onMeta = (): void => {
-      const meta = Number.isFinite(audio.duration) ? audio.duration : 0
-      setDuration(meta)
-      const pending = restoredTimeRef.current
-      if (pending !== null && audio.currentTime < 0.25) {
-        const target = Math.min(pending, meta || pending)
-        audio.currentTime = target
-        positionRef.current = target
-        restoredTimeRef.current = null
-        setCurrentTime(target)
+    const a = createSlot()
+    const b = createSlot()
+    slotsRef.current = { a, b }
+    activeSlotRef.current = 'a'
+
+    const attach = (audio: HTMLAudioElement): (() => void) => {
+      const onTime = (): void => {
+        if (audio !== activeAudio()) return
+        positionRef.current = clampPersistedTime(audio.currentTime)
+        setCurrentTime(positionRef.current)
+        autoFadeCheckRef.current()
+      }
+      const onMeta = (): void => {
+        if (audio !== activeAudio()) return
+        const meta = Number.isFinite(audio.duration) ? audio.duration : 0
+        setDuration(meta)
+        const pending = restoredTimeRef.current
+        if (pending !== null && audio.currentTime < 0.25) {
+          const target = Math.min(pending, meta || pending)
+          audio.currentTime = target
+          positionRef.current = target
+          restoredTimeRef.current = null
+          setCurrentTime(target)
+        }
+      }
+      const onPlay = (): void => {
+        if (audio === activeAudio()) setIsPlaying(true)
+      }
+      const onPause = (): void => {
+        if (audio !== activeAudio()) return
+        setIsPlaying(false)
+        saveNow()
+      }
+      const onEnded = (): void => {
+        if (audio === activeAudio()) advanceRef.current()
+      }
+
+      audio.addEventListener('timeupdate', onTime)
+      audio.addEventListener('durationchange', onMeta)
+      audio.addEventListener('loadedmetadata', onMeta)
+      audio.addEventListener('play', onPlay)
+      audio.addEventListener('pause', onPause)
+      audio.addEventListener('ended', onEnded)
+      return () => {
+        audio.removeEventListener('timeupdate', onTime)
+        audio.removeEventListener('durationchange', onMeta)
+        audio.removeEventListener('loadedmetadata', onMeta)
+        audio.removeEventListener('play', onPlay)
+        audio.removeEventListener('pause', onPause)
+        audio.removeEventListener('ended', onEnded)
       }
     }
-    const onPlay = (): void => setIsPlaying(true)
-    const onPause = (): void => {
-      setIsPlaying(false)
-      saveNow()
-    }
-    const onEnded = (): void => advanceRef.current()
-
-    audio.addEventListener('timeupdate', onTime)
-    audio.addEventListener('durationchange', onMeta)
-    audio.addEventListener('loadedmetadata', onMeta)
-    audio.addEventListener('play', onPlay)
-    audio.addEventListener('pause', onPause)
-    audio.addEventListener('ended', onEnded)
+    const detachA = attach(a)
+    const detachB = attach(b)
 
     return () => {
-      audio.removeEventListener('timeupdate', onTime)
-      audio.removeEventListener('durationchange', onMeta)
-      audio.removeEventListener('loadedmetadata', onMeta)
-      audio.removeEventListener('play', onPlay)
-      audio.removeEventListener('pause', onPause)
-      audio.removeEventListener('ended', onEnded)
-      clearFade()
+      detachA()
+      detachB()
+      finishCrossfade(false)
       clearPending()
-      audio.pause()
-      audio.removeAttribute('src')
-      audioRef.current = null
+      a.pause()
+      b.pause()
+      a.removeAttribute('src')
+      b.removeAttribute('src')
+      slotsRef.current = { a: null, b: null }
       urlsRef.current.forEach((url) => URL.revokeObjectURL(url))
       urlsRef.current = []
     }
-  }, [clearFade, clearPending, saveNow])
+  }, [activeAudio, clearPending, finishCrossfade, saveNow])
 
   // --- Hidratación desde IndexedDB ----------------------------------------
   useEffect(() => {
@@ -417,30 +531,38 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const play = useCallback((): void => {
-    const audio = audioRef.current
+    const audio = activeAudio()
     if (!audio || !audio.src) return
     void audio.play().catch(() => setIsPlaying(false))
-  }, [])
+  }, [activeAudio])
 
   const pause = useCallback((): void => {
-    audioRef.current?.pause()
+    finishCrossfade(true)
+    clearPending()
+    slotsRef.current.a?.pause()
+    slotsRef.current.b?.pause()
     saveNow()
-  }, [saveNow])
+  }, [clearPending, finishCrossfade, saveNow])
 
   const togglePlay = useCallback((): void => {
-    if (audioRef.current?.paused) play()
+    if (activeAudio()?.paused) play()
     else pause()
-  }, [pause, play])
+  }, [activeAudio, pause, play])
 
-  const seek = useCallback((time: number): void => {
-    const audio = audioRef.current
-    if (!audio) return
-    const max = Number.isFinite(audio.duration) ? audio.duration : time
-    const next = Math.min(Math.max(time, 0), Math.max(0, max))
-    audio.currentTime = next
-    positionRef.current = next
-    setCurrentTime(next)
-  }, [])
+  const seek = useCallback(
+    (time: number): void => {
+      const audio = activeAudio()
+      if (!audio) return
+      finishCrossfade(true)
+      clearPending()
+      const max = Number.isFinite(audio.duration) ? audio.duration : time
+      const next = Math.min(Math.max(time, 0), Math.max(0, max))
+      audio.currentTime = next
+      positionRef.current = next
+      setCurrentTime(next)
+    },
+    [activeAudio, clearPending, finishCrossfade],
+  )
 
   const seekRatio = useCallback(
     (ratio: number): void => {
@@ -454,19 +576,29 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       const state = latestRef.current
       const list = state.queueIds
       if (!list.length) return
-      const index = list.indexOf(state.currentId ?? '')
 
       if (auto && state.repeatMode === 'one') {
         seek(0)
         play()
         return
       }
-      if (auto && state.repeatMode === 'off' && !state.isShuffle && index === list.length - 1) {
-        pause()
-        seek(0)
+      if (auto) {
+        const id = nextTrackId({
+          queueIds: list,
+          currentId: state.currentId,
+          repeatMode: state.repeatMode,
+          isShuffle: state.isShuffle,
+        })
+        if (!id) {
+          pause()
+          seek(0)
+          return
+        }
+        changeTo(id, true)
         return
       }
 
+      const index = list.indexOf(state.currentId ?? '')
       let nextIndex: number
       if (state.isShuffle && list.length > 1) {
         do {
@@ -475,8 +607,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       } else {
         nextIndex = index < 0 ? 0 : (index + 1) % list.length
       }
-
-      changeTo(list[nextIndex], auto || state.isPlaying)
+      changeTo(list[nextIndex], state.isPlaying)
     },
     [changeTo, pause, play, seek],
   )
@@ -504,7 +635,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
 
   const prev = useCallback((): void => {
     const state = latestRef.current
-    if ((audioRef.current?.currentTime ?? 0) > 3) {
+    if ((activeAudio()?.currentTime ?? 0) > 3) {
       seek(0)
       return
     }
@@ -513,44 +644,46 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     const index = list.indexOf(state.currentId ?? '')
     const prevIndex = index <= 0 ? list.length - 1 : index - 1
     changeTo(list[prevIndex], state.isPlaying)
-  }, [changeTo, seek])
+  }, [activeAudio, changeTo, seek])
 
   advanceRef.current = () => next(true)
   actionsRef.current = { togglePlay, next, prev }
 
-  // --- Sincronización del elemento de audio -------------------------------
+  // --- Sincronización del elemento activo ---------------------------------
   useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-    clearPending()
-    clearFade()
     if (!currentTrack) {
-      audio.pause()
-      audio.removeAttribute('src')
+      clearPending()
+      finishCrossfade(false)
+      slotsRef.current.a?.pause()
+      slotsRef.current.b?.pause()
+      slotsRef.current.a?.removeAttribute('src')
+      slotsRef.current.b?.removeAttribute('src')
       setDuration(0)
       setIsPlaying(false)
       return
     }
-    audio.src = currentTrack.audioUrl
-    audio.load()
-    setDuration(currentTrack.durationMs / 1000)
-
-    const fadeInMs = fadeInRef.current
-    fadeInRef.current = 0
-    if (latestRef.current.isPlaying) {
-      play()
-      if (fadeInMs > 0) {
-        audio.volume = 0
-        fadeTo(targetVolumeRef.current, fadeInMs, undefined, true)
-      } else {
-        audio.volume = targetVolumeRef.current
-      }
+    const audio = activeAudio()
+    if (!audio) return
+    if (audio.src !== currentTrack.audioUrl) {
+      clearPending()
+      finishCrossfade(false)
+      audio.src = currentTrack.audioUrl
+      audio.load()
     }
-  }, [currentTrack?.audioUrl, clearFade, clearPending, fadeTo, play])
+    setDuration(currentTrack.durationMs / 1000)
+    if (latestRef.current.isPlaying && !crossfadeRef.current) {
+      audio.volume = targetVolumeRef.current
+      if (audio.paused) void audio.play().catch(() => setIsPlaying(false))
+    }
+  }, [activeAudio, clearPending, currentTrack?.audioUrl, finishCrossfade])
 
   useEffect(() => {
     targetVolumeRef.current = isMuted ? 0 : volume * volume
-    if (!fadingRef.current && audioRef.current) audioRef.current.volume = targetVolumeRef.current
+    if (crossfadeRef.current) return
+    const a = slotsRef.current.a
+    const b = slotsRef.current.b
+    if (a) a.volume = targetVolumeRef.current
+    if (b) b.volume = targetVolumeRef.current
   }, [isMuted, volume])
 
   // --- Temporizador de apagado --------------------------------------------

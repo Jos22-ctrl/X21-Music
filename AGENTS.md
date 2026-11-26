@@ -20,7 +20,12 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
 
 ## 2. Reglas de reproducción
 
-- Un solo `<audio>`; la fuente es un object URL del blob guardado en IndexedDB.
+- Dos elementos `<audio>` (A/B) con object URLs de los blobs guardados en IndexedDB. El activo
+  alimenta la interfaz y Media Session; el otro se usa para el crossfade real. `src/lib/crossfade.ts`
+  decide cuándo arrancar (restante ≤ `crossfadeSeconds`) y qué pista sigue según cola,
+  repetición y aleatorio; el fundido es de potencia constante y respeta `volume²` y silencio.
+  Pausa/seek finalizan el fundido; `repeat one` reinicia sin solapar.
+- `skipSilence` significa solo «Sin pausa entre canciones»: suprime el hueco fijo de 400 ms.
 - Repetición `off | all | one`, aleatorio e historial de cola persistidos. La posición se lee
   del elemento de audio al guardar (nunca de `currentTime`, que cambia con `timeupdate`): estado
   completo con debounce de 500 ms, posición cada 5 s reproduciendo y guardado inmediato al pausar,
@@ -29,8 +34,8 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
   y `shouldPersist`, que excluye la posición del guardado completo.
 - Metadatos y portadas se leen del archivo; deduplicación por huella nombre+tamaño+fecha y,
   si `preventDuplicates` está activo, también por título/artista/álbum.
-- Ajustes persistentes en `preferences`: transición gradual (`crossfadeSeconds`, fundido
-  de volumen antes/después del cambio), `skipSilence`, `preventDuplicates`, `monoDark`,
+- Ajustes persistentes en `preferences`: `crossfadeSeconds` (segundos de solape A/B),
+  `skipSilence` (sin pausa fija de 400 ms), `preventDuplicates`, `monoDark`,
   `marqueeTitles` (false por defecto: una línea con elipsis; true: desplazamiento si no cabe),
   `playbackBarStyle` (`simple` por defecto; `clasico` recupera la barra de controles anterior),
   `islandLayout` (isla por ranura; se reordena con Ctrl + arrastrar en ambos diseños) y

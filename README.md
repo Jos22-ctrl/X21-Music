@@ -29,7 +29,9 @@ dispositivo: metadatos ID3, portadas, forma de onda, biblioteca y paleta. Sin ba
   espacio disponible de su columna (container queries); la imagen se ajusta con
   `object-fit: cover` y tiene fallback si no hay carátula o falla al cargar.
 - **Reproducción**: barra de onda seekable, volumen, silencio, aleatorio, repetición
-  `off/one/all`, cola, búsqueda y Media Session API.
+  `off/one/all`, cola, búsqueda y Media Session API. El crossfade usa dos elementos `<audio>` que
+  se alternan: la pista siguiente arranca antes de que termine la actual y ambas se funden sin
+  hueco muerto; pausar, buscar o cambiar de pista cancela el fundido sin dejar volúmenes en 0.
 - **Botones fundidos**: rellenos con degradados que terminan en transparente, de modo que el
   cristal teñido de la isla (y la portada difuminada detrás) se ve a través de ellos.
 - **Responsivo en todo**: tres zonas en escritorio, dos en tablet y una columna con scroll en
@@ -58,8 +60,9 @@ dispositivo: metadatos ID3, portadas, forma de onda, biblioteca y paleta. Sin ba
 - **Ajustes persistentes y legibles**: panel dividido en Sonido, Apariencia, Biblioteca y
   Apagado, con el estado «Activado/Desactivado» visible en cada interruptor, texto más grande
   y mayor contraste;
-  transición gradual entre pistas (0–8 s, con fundido de volumen), opción de omitir el
-  silencio entre canciones, bloqueo de duplicados al importar/añadir a la cola, diseño de
+  crossfade real entre pistas (0–8 s, dos elementos de audio con fundido de potencia constante),
+  opción «Sin pausa entre canciones» (solo suprime el hueco fijo de 400 ms; no detecta silencios),
+  bloqueo de duplicados al importar/añadir a la cola, diseño de
   reproducción (Simple/Clásico), modo oscuro monocromo de un solo color y desplazamiento
   opcional de títulos largos (por defecto se cortan en una línea). Se guardan en IndexedDB.
 - **Estado que sobrevive al cierre**: volumen, cola, pista, ajustes y posición se guardan en

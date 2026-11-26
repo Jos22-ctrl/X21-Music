@@ -22,5 +22,4 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   checkForUpdates: () => ipcRenderer.invoke('update:check'),
   installUpdate: (key) => ipcRenderer.invoke('update:install', key),
-  openUpdatesFolder: () => ipcRenderer.invoke('update:open-folder'),
 })

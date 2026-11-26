@@ -43,6 +43,11 @@ function safeChecksumUrl(value) {
   return /\.sha256$/i.test(url) ? url : ''
 }
 
+function safeReleaseUrl(value) {
+  const url = String(value || '')
+  return url.startsWith('https://github.com/') ? url : ''
+}
+
 function normalizedSha256(value) {
   const hash = String(value || '')
     .trim()
@@ -64,33 +69,31 @@ function parseChecksumFile(text, installerName) {
   return name === path.win32.basename(installerName) ? hash : ''
 }
 
-/** Normaliza un release de GitHub o un update.json local y decide si hay actualización. */
-function normalizeUpdateInfo(raw, currentVersion, source = 'local') {
-  const fallback = { available: false, currentVersion, source }
-  if (!raw || typeof raw !== 'object') return fallback
+/** Normaliza un release de GitHub; sin .sha256 no se ofrece la actualización. */
+function normalizeGitHubRelease(release, currentVersion) {
+  const unavailable = { available: false, currentVersion, source: 'github' }
+  if (!release || typeof release !== 'object') return unavailable
 
-  const version = typeof raw.version === 'string' ? raw.version.trim() : ''
-  const installer = safeInstallerName(raw.installer)
-  if (!version || !installer || !isNewerVersion(version, currentVersion)) return fallback
-
-  const installerUrl = safeDownloadUrl(raw.installerUrl)
-  const checksumUrl = safeChecksumUrl(raw.checksumUrl)
-  const sha256 = normalizedSha256(raw.sha256 ?? raw.checksum)
-  // Nunca se ofrece un instalador sin una forma verificada de comprobarlo.
-  if (source === 'github' && (!installerUrl || !checksumUrl)) return fallback
-  if (source === 'local' && !sha256) return fallback
+  const version = typeof release.tag_name === 'string' ? release.tag_name.trim() : ''
+  const assets = Array.isArray(release.assets) ? release.assets : []
+  const asset = assets.find((item) => /\.exe$/i.test(String(item?.name || '')))
+  const checksum = assets.find((item) => /\.sha256$/i.test(String(item?.name || '')))
+  const installer = safeInstallerName(asset?.name)
+  const installerUrl = safeDownloadUrl(asset?.browser_download_url)
+  const checksumUrl = safeChecksumUrl(checksum?.browser_download_url)
+  if (!version || !installer || !installerUrl || !checksumUrl) return unavailable
+  if (!isNewerVersion(version, currentVersion)) return unavailable
 
   return {
     available: true,
     currentVersion,
     version,
     installer,
-    notes: typeof raw.notes === 'string' ? raw.notes.trim() : '',
+    notes: typeof release.body === 'string' ? release.body.trim() : '',
     installerUrl,
     checksumUrl,
-    sha256,
-    releaseUrl: source === 'github' ? String(raw.releaseUrl || '') : '',
-    source,
+    releaseUrl: safeReleaseUrl(release.html_url),
+    source: 'github',
   }
 }
 
@@ -100,7 +103,8 @@ module.exports = {
   safeInstallerName,
   safeDownloadUrl,
   safeChecksumUrl,
+  safeReleaseUrl,
   normalizedSha256,
   parseChecksumFile,
-  normalizeUpdateInfo,
+  normalizeGitHubRelease,
 }

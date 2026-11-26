@@ -4,7 +4,8 @@ const crypto = require('node:crypto')
 const fs = require('node:fs/promises')
 const path = require('node:path')
 const {
-  normalizeUpdateInfo,
+  isNewerVersion,
+  normalizeGitHubRelease,
   parseChecksumFile,
 } = require('./update.cjs')
 const {
@@ -23,7 +24,6 @@ const GITHUB_REPO = 'Jos22-ctrl/X21-Music'
 
 let mainWindow = null
 let folderPromise = null
-let updatesFolderPromise = null
 /** Clave entregada a la interfaz en la última comprobación; se consume al instalar. */
 let pendingUpdate = null
 
@@ -108,21 +108,6 @@ async function moveToMusicDir(source) {
     if (error && error.code === 'EXDEV') await fs.unlink(origin)
   }
   return destination
-}
-
-/** C:\Users\<usuario>\X21 Music\Actualizaciones: update.json y el instalador descargado. */
-async function ensureUpdatesDir() {
-  if (!updatesFolderPromise) {
-    const dir = path.join(app.getPath('home'), 'X21 Music', 'Actualizaciones')
-    updatesFolderPromise = fs
-      .mkdir(dir, { recursive: true })
-      .then(() => dir)
-      .catch((error) => {
-        updatesFolderPromise = null
-        throw error
-      })
-  }
-  return updatesFolderPromise
 }
 
 function makeUpdateKey() {
@@ -239,58 +224,37 @@ trustedHandle('music:open-folder', async () => {
   await shell.openPath(dir)
 })
 
-/** Consulta el último release de GitHub; devuelve null si no hay red o no sirve. */
+/** Consulta solo releases de GitHub; nunca usa archivos locales. */
 async function checkGitHubUpdates(currentVersion) {
   try {
     const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
       headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'X21-Music' },
     })
-    if (!response.ok) return null
+    if (!response.ok) {
+      return { available: false, currentVersion, source: 'github', error: `GitHub respondió ${response.status}.` }
+    }
     const release = await response.json()
-    const assets = release.assets || []
-    const asset = assets.find((item) => /\.exe$/i.test(item.name || ''))
-    const checksum = assets.find((item) => /\.sha256$/i.test(item.name || ''))
-    if (!asset) return null
-
-    return normalizeUpdateInfo(
-      {
-        version: String(release.tag_name || ''),
-        installer: asset.name,
-        installerUrl: asset.browser_download_url,
-        checksumUrl: checksum?.browser_download_url || '',
-        releaseUrl: release.html_url,
-        notes: release.body || '',
-      },
-      currentVersion,
-      'github',
-    )
+    const info = normalizeGitHubRelease(release, currentVersion)
+    if (!info.available && !isNewerVersion(release?.tag_name, currentVersion)) {
+      return { ...info, message: 'Ya tienes la última versión publicada en GitHub.' }
+    }
+    if (!info.available) {
+      return { ...info, error: 'El último release de GitHub no trae un instalador verificable.' }
+    }
+    return info
   } catch {
-    return null
+    return { available: false, currentVersion, source: 'github', error: 'No se pudo conectar con GitHub.' }
   }
 }
 
 trustedHandle('update:check', async () => {
-  const folder = await ensureUpdatesDir()
-  const currentVersion = app.getVersion()
-
-  // GitHub primero; si falla o no trae una versión mayor, se usa la carpeta local.
-  let info = await checkGitHubUpdates(currentVersion)
-  if (!info || !info.available) {
-    let raw = null
-    try {
-      raw = JSON.parse(await fs.readFile(path.join(folder, 'update.json'), 'utf8'))
-    } catch {
-      raw = null
-    }
-    info = normalizeUpdateInfo(raw, currentVersion, 'local')
-  }
-
-  if (!info.available) return { ...info, folder }
+  const info = await checkGitHubUpdates(app.getVersion())
+  if (!info.available) return info
 
   // Cada búsqueda emite una clave nueva para que un instalador viejo no sirva.
   const key = makeUpdateKey()
-  pendingUpdate = { ...info, key, folder }
-  return { ...info, key, folder }
+  pendingUpdate = { ...info, key }
+  return { ...info, key }
 })
 
 trustedHandle('update:install', async (_event, key) => {
@@ -302,23 +266,16 @@ trustedHandle('update:install', async (_event, key) => {
   await fs.mkdir(downloadDir, { recursive: true })
   const installerPath = path.join(downloadDir, pendingUpdate.installer)
 
-  let expected = pendingUpdate.sha256
-  if (pendingUpdate.source === 'github') {
-    if (!pendingUpdate.checksumUrl) {
-      throw new Error('El release no incluye su archivo .sha256; no se puede verificar.')
-    }
-    const checksumPath = path.join(downloadDir, `${pendingUpdate.installer}.sha256`)
-    await downloadWithHash(pendingUpdate.checksumUrl, checksumPath, MAX_CHECKSUM_BYTES)
-    expected = parseChecksumFile(
-      await fs.readFile(checksumPath, 'utf8'),
-      pendingUpdate.installer,
-    )
-    await downloadWithHash(pendingUpdate.installerUrl, installerPath, MAX_INSTALLER_BYTES)
-  } else {
-    const source = path.join(pendingUpdate.folder, pendingUpdate.installer)
-    await fs.access(source)
-    await fs.copyFile(source, installerPath)
+  if (!pendingUpdate.checksumUrl) {
+    throw new Error('El release no incluye su archivo .sha256; no se puede verificar.')
   }
+  const checksumPath = path.join(downloadDir, `${pendingUpdate.installer}.sha256`)
+  await downloadWithHash(pendingUpdate.checksumUrl, checksumPath, MAX_CHECKSUM_BYTES)
+  const expected = parseChecksumFile(
+    await fs.readFile(checksumPath, 'utf8'),
+    pendingUpdate.installer,
+  )
+  await downloadWithHash(pendingUpdate.installerUrl, installerPath, MAX_INSTALLER_BYTES)
 
   // Ningún instalador se lanza sin comparar su SHA-256 con el publicado.
   const actual = await fileSha256(installerPath)
@@ -337,11 +294,6 @@ trustedHandle('update:install', async (_event, key) => {
 
   pendingUpdate = null
   return { installerPath }
-})
-
-trustedHandle('update:open-folder', async () => {
-  const dir = await ensureUpdatesDir()
-  await shell.openPath(dir)
 })
 
 function createWindow() {

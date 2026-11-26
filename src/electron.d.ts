@@ -5,17 +5,17 @@ declare global {
     version?: string
     notes?: string
     installer?: string
-    /** Origen del instalador: release de GitHub o carpeta local. */
-    source?: 'github' | 'local'
+    /** Único origen admitido: el release de GitHub. */
+    source?: 'github'
     installerUrl?: string
     /** URL del `.sha256` publicado junto al instalador. */
     checksumUrl?: string
-    /** SHA-256 esperado (local) o vacío si se toma del `.sha256` remoto. */
-    sha256?: string
     releaseUrl?: string
     /** Clave que muestra la app y que debe escribirse en el instalador. */
     key?: string
-    folder: string
+    /** Estado de la consulta cuando no hay actualización o falla GitHub. */
+    error?: string
+    message?: string
   }
 
   interface ElectronAPI {
@@ -30,7 +30,6 @@ declare global {
     openMusicFolder: () => Promise<void>
     checkForUpdates: () => Promise<UpdateInfo>
     installUpdate: (key: string) => Promise<{ installerPath: string }>
-    openUpdatesFolder: () => Promise<void>
   }
 
   interface Window {

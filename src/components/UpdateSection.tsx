@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Copy, Download, ExternalLink, FolderOpen, RefreshCw } from 'lucide-react'
+import { Check, Copy, Download, ExternalLink, RefreshCw } from 'lucide-react'
 import { APP_VERSION } from '../lib/version'
 
 export function UpdateSection() {
@@ -24,7 +24,7 @@ export function UpdateSection() {
     try {
       setInfo(await api.checkForUpdates())
     } catch {
-      setError('No se pudo leer la carpeta de actualizaciones.')
+      setError('No se pudo consultar GitHub.')
     } finally {
       setChecking(false)
     }
@@ -37,9 +37,7 @@ export function UpdateSection() {
     try {
       await api.installUpdate(info.key)
       setStatus(
-        `Instalador verificado con SHA-256 y abierto (origen: ${
-          info?.source === 'github' ? 'GitHub' : 'carpeta local'
-        }). Escribe la clave de un solo uso en la opción «Actualizar».`,
+        'Instalador verificado con SHA-256 y abierto desde GitHub. Escribe la clave de un solo uso en la opción «Actualizar».',
       )
     } catch {
       setError(
@@ -63,9 +61,8 @@ export function UpdateSection() {
   return (
     <div className="update-section">
       <p className="settings-intro">
-        Busca primero en los releases de GitHub y, si no hay red o no hay uno más nuevo, en tu
-        carpeta local con <code>update.json</code>. La app verificará el SHA-256 del instalador
-        antes de abrirlo y te dará una clave de un solo uso para confirmar la actualización.
+        Busca únicamente en los releases de GitHub. La app verifica el SHA-256 del instalador antes
+        de abrirlo y te da una clave de un solo uso para confirmar la actualización.
       </p>
 
       <div className="setting-row">
@@ -84,21 +81,13 @@ export function UpdateSection() {
           >
             <RefreshCw size={13} /> {checking ? 'Buscando…' : 'Buscar'}
           </button>
-          {api && (
-            <button
-              type="button"
-              className="chip chip--muted"
-              onClick={() => void api.openUpdatesFolder()}
-            >
-              <FolderOpen size={13} /> Abrir carpeta
-            </button>
-          )}
         </div>
       </div>
 
-      {info && !info.available && (
+      {info && !info.available && !info.error && (
         <p className="update-message">
-          <Check size={14} /> Ya tienes la última versión disponible ({info.currentVersion}).
+          <Check size={14} />{' '}
+          {info.message ?? `Ya tienes la última versión (${info.currentVersion}).`}
         </p>
       )}
 
@@ -107,9 +96,7 @@ export function UpdateSection() {
           <div className="setting-row__info">
             <strong>
               <Download size={14} /> Versión {info.version} disponible
-              <span className="update-source">
-                {info.source === 'github' ? 'GitHub' : 'Carpeta local'}
-              </span>
+              <span className="update-source">GitHub</span>
             </strong>
             {info.notes ? <small>{info.notes}</small> : null}
             {info.releaseUrl && (
@@ -141,9 +128,10 @@ export function UpdateSection() {
         </div>
       )}
 
-      {error && <p className="update-error">{error}</p>}
+      {(error || info?.error) && (
+        <p className="update-error">{error || info?.error}</p>
+      )}
       {status && <p className="update-message">{status}</p>}
-      {info?.folder && <small className="update-path">{info.folder}</small>}
     </div>
   )
 }

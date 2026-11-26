@@ -98,7 +98,7 @@ al resumen de novedades). Proyecto creado por **Claude y X21**.
 | Arquitectura | **64 bits (x64)**. El instalador es NSIS x64; no hay versión de 32 bits ni ARM. |
 | Espacio en disco | ~121 MB el instalador y ~408 MB instalada, más el espacio para tu música y las copias en `C:\Users\<usuario>\X21 Music\Música`. |
 | Permisos | Escribir en tu carpeta de usuario (música, ajustes en IndexedDB, actualizaciones y `%TEMP%`). La opción «Instalar para todos los usuarios» pide **Administrador**. |
-| Internet | **Opcional**. Solo se usa para buscar releases en GitHub; sin red, la app cae a la carpeta local de actualizaciones. Reproducir música funciona siempre offline. |
+| Internet | **Opcional**. Solo se usa para buscar releases en GitHub; sin red se muestra un error. Reproducir música funciona siempre offline. |
 | Cuenta / backend | **Ninguno**. Todo se procesa en el equipo. |
 | Protección | CSP estricta en producción, sin scripts en línea; Electron bloquea navegaciones ajenas, permisos del sistema y enlaces que no sean HTTPS. |
 
@@ -149,23 +149,14 @@ por `file://` y el service worker no se registra.
 
 ## Actualizaciones
 
-El botón de actualizaciones de la cabecera (y «Ajustes → Actualizaciones») consulta primero
-el último release de `Jos22-ctrl/X21-Music` en GitHub. Si no hay red o no hay un release más
-nuevo, busca en `C:\Users\<usuario>\X21 Music\Actualizaciones`.
+El botón de actualizaciones de la cabecera (y «Ajustes → Actualizaciones») consulta **solo**
+el último release de `Jos22-ctrl/X21-Music` en GitHub. Ya no se busca en carpetas locales ni en
+`update.json`: sin conexión se muestra un error y, si no hay versión mayor, se indica que ya
+estás al día.
 
-Para publicar en GitHub, crea un release `vX.Y.Z` y sube **dos assets**: el `.exe` y su
-`.sha256` con el formato `<hash>  <nombre.exe>` (sin los dos puntos que añade `certutil`). Un
-release sin ese archivo se descarta. Para publicar en local, coloca allí el instalador y un
-`update.json`:
-
-```json
-{
-  "version": "0.9.7",
-  "installer": "X21 Music Setup 0.9.7.exe",
-  "sha256": "<64 hexadecimales>",
-  "notes": "Novedades de esta versión"
-}
-```
+Para publicar, crea un release `vX.Y.Z` y sube **dos assets**: el `.exe` y su `.sha256` con el
+formato `<hash>  <nombre.exe>` (sin los dos puntos que añade `certutil`). Un release sin ese
+archivo se descarta.
 
 La app compara la versión con la instalada. Si hay una más nueva, muestra una clave de un solo
 uso (`X21-XXXXXXXX`), descarga por partes (máximo 200 MB y 60 s de timeout) el instalador y su

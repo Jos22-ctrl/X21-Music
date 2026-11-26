@@ -15,8 +15,9 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
 - `src/components/*`: islas visuales. `src/index.css`: sistema visual completo.
 - `electron/`: ventana principal y preload de Electron; IPC `music:*` crea y usa
   `C:\Users\<usuario>\X21 Music\Música`, e IPC `update:*` gestiona las actualizaciones.
-  `electron/update.cjs` compara versiones y valida `update.json`. `electron/paths.cjs` y
-  `electron/security.cjs` validan rutas, ventanas e IPC. `dist:win` genera el instalador NSIS.
+  `electron/update.cjs` compara versiones y valida los releases de GitHub (instalador y `.sha256`).
+  `electron/paths.cjs` y `electron/security.cjs` validan rutas, ventanas e IPC. `dist:win` genera
+  el instalador NSIS.
 - La CSP se inyecta con un plugin de Vite (`src/lib/csp.ts`): en producción prohíbe scripts en
   línea; en desarrollo permite HMR. Electron rechaza navegaciones ajenas, abre solo HTTPS externo
   y exige que el emisor de cada IPC sea la página de la app; los permisos del sistema se deniegan.
@@ -109,12 +110,12 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
 - `src/components/MarqueeText.tsx` mide el texto con `ResizeObserver` y solo lo desplaza si
   no cabe y `marqueeTitles` está activo; con `prefers-reduced-motion` la animación se detiene.
 - Panel con pestañas «Ajustes», «Actualizaciones» y «Acerca de»; botón de actualizaciones en
-  la cabecera. Primero consulta `https://api.github.com/repos/Jos22-ctrl/X21-Music/releases/latest`
-  y, si falla o no hay versión mayor, lee `update.json` y el `.exe` de
-  `C:\Users\<usuario>\X21 Music\Actualizaciones`. Si hay versión mayor, genera una clave de un
-  solo uso `X21-XXXXXXXX`, descarga con límite de 200 MB y timeout de 60 s el instalador y su
-  `.sha256` a `%TEMP%\X21 Music Updates`. Solo se lanza si el SHA-256 coincide; un release sin
-  `.sha256` se descarta. Se lanza con `/X21KEY=<clave>` `/X21MODE=update`.
+  la cabecera. Consulta **solo** `https://api.github.com/repos/Jos22-ctrl/X21-Music/releases/latest`:
+  no hay origen local ni `update.json`. Si falla la red se muestra el error; si no hay versión
+  mayor se indica que ya está al día. Con versión mayor genera una clave de un solo uso
+  `X21-XXXXXXXX`, descarga con límite de 200 MB y timeout de 60 s el instalador y su `.sha256` a
+  `%TEMP%\X21 Music Updates`. Solo se lanza si el SHA-256 coincide; un release sin `.sha256` se
+  descarta. Se lanza con `/X21KEY=<clave>` `/X21MODE=update`.
   `build/installer.nsh` añade las opciones Instalar,
   Reinstalar, Instalar para todos los usuarios y Actualizar; esta última valida la clave. El orden
   de páginas es bienvenida → modo → elevación inmediata (solo si se eligió «todos los usuarios») →

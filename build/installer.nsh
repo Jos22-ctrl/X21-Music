@@ -17,15 +17,22 @@
   Var x21RadioAllUsers
   Var x21RadioUpdate
 
-  # El welcome page no viene incluido por electron-builder: se añade aquí,
-  # seguido de la página de opciones y de la página de clave (solo actualizar).
+  # Orden: bienvenida → modo → elevación de electron-builder (solo «todos») →
+  # clave (solo actualizar) → directorio → instalación. Insertamos aquí la página
+  # de modo del propio electron-builder para que pida administrador justo después
+  # de elegir, y la marcamos como ya insertada para que no aparezca dos veces.
   !macro customWelcomePage
     !insertmacro MUI_PAGE_WELCOME
     Page custom X21ModePageShow X21ModePageLeave
+    !ifndef INSTALL_MODE_PER_ALL_USERS
+      !insertmacro PAGE_INSTALL_MODE
+    !endif
+    !define INSTALL_MODE_PER_ALL_USERS
     Page custom X21KeyPageShow X21KeyPageLeave
   !macroend
 
-  # Nuestra página ya decide el modo; la página de usuario de electron-builder se omite.
+  # La página de modo de electron-builder consulta esta macro; nuestra elección
+  # resuelve el modo cuando el instalador ya se abrió como administrador.
   !macro customInstallmode
     ${If} $x21Mode == "allusers"
       StrCpy $isForceMachineInstall "1"
@@ -94,6 +101,8 @@
     SendMessage $x21RadioAllUsers ${BM_GETCHECK} 0 0 $R0
     ${If} $R0 == ${BST_CHECKED}
       StrCpy $x21Mode "allusers"
+      # REQUIERE PRUEBA MANUAL EN WINDOWS: la siguiente página debe pedir
+      # administrador e instalar para todos los usuarios.
       Return
     ${EndIf}
 

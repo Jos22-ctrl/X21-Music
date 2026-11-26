@@ -164,6 +164,8 @@ suma a `%TEMP%\X21 Music Updates` y **solo lo abre si el SHA-256 coincide**. La 
 cada búsqueda: un instalador guardado antes no sirve. El instalador ofrece **Instalar**,
 **Reinstalar**, **Instalar para todos los usuarios** y **Actualizar**; esta última opción exige
 escribir la clave que mostró la app. Sin clave o con una clave vieja, la actualización se detiene.
+Si eliges **Instalar para todos los usuarios**, Windows pide permisos de administrador justo
+después de esa elección; si eliges **Instalar** o **Reinstalar**, no se pide elevación.
 
 ## Estructura
 

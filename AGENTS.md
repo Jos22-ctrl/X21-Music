@@ -114,7 +114,11 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
   `.sha256` a `%TEMP%\X21 Music Updates`. Solo se lanza si el SHA-256 coincide; un release sin
   `.sha256` se descarta. Se lanza con `/X21KEY=<clave>` `/X21MODE=update`.
   `build/installer.nsh` añade las opciones Instalar,
-  Reinstalar, Instalar para todos los usuarios y Actualizar; esta última valida la clave.
+  Reinstalar, Instalar para todos los usuarios y Actualizar; esta última valida la clave. El orden
+  de páginas es bienvenida → modo → elevación inmediata (solo si se eligió «todos los usuarios») →
+  clave (solo actualizar) → directorio → instalación. `customWelcomePage` inserta la página de
+  modo propia de electron-builder en ese punto y define `INSTALL_MODE_PER_ALL_USERS` para que no
+  se duplique; `customInstallmode` fija el modo cuando ya se abrió como administrador.
   Versión `pre-alpha 0.9.10` en `src/lib/version.ts` y en `package.json`.
 - `monoDark` sustituye la paleta por `MONO_PALETTE` y desactiva la imagen de fondo.
 

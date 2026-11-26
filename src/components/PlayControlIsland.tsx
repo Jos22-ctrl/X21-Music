@@ -1,10 +1,10 @@
 import type { CSSProperties } from 'react'
 import { Pause, Play, Repeat, Shuffle } from 'lucide-react'
-import { usePlayer } from '../hooks/usePlayer'
+import { usePlayer, usePlayerTime } from '../hooks/usePlayer'
 
 export function PlayControlIsland() {
-  const { isPlaying, progress, isShuffle, repeatMode, togglePlay, toggleShuffle, cycleRepeat } =
-    usePlayer()
+  const { isPlaying, isShuffle, repeatMode, togglePlay, toggleShuffle, cycleRepeat } = usePlayer()
+  const { progress } = usePlayerTime()
 
   return (
     <section className="island controls-island" aria-label="Controles de reproducción">

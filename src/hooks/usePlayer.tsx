@@ -26,6 +26,7 @@ import {
 } from '../lib/fingerprint'
 import { computeWaveform, readAudioMetadata } from '../lib/metadata'
 import { DEFAULT_ISLAND_LAYOUT, normalizeIslandLayout } from '../lib/islandLayout'
+import { computeProgress, type PlayerTime } from '../lib/playerTime'
 import {
   clampPersistedTime,
   clampPersistedVolume,
@@ -52,9 +53,6 @@ export interface PlayerContextValue {
   currentTrack: Track | null
   palette: Palette
   isPlaying: boolean
-  currentTime: number
-  duration: number
-  progress: number
   volume: number
   isMuted: boolean
   repeatMode: RepeatMode
@@ -91,6 +89,8 @@ export interface PlayerContextValue {
 }
 
 const PlayerContext = createContext<PlayerContextValue | null>(null)
+/** Tiempo aislado: `timeupdate` no debe repintar todas las islas. */
+export const PlayerTimeContext = createContext<PlayerTime | null>(null)
 
 const GAP_MS = 400
 
@@ -229,7 +229,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     .map((id) => tracks.find((track) => track.id === id))
     .filter((track): track is Track => Boolean(track))
   const durationSeconds = duration || (currentTrack?.durationMs ?? 0) / 1000
-  const progress = durationSeconds > 0 ? Math.min(1, currentTime / durationSeconds) : 0
+  const progress = computeProgress(currentTime, durationSeconds)
   const palette = currentTrack?.palette ?? DEFAULT_PALETTE
 
   const activeAudio = useCallback(() => slotsRef.current[activeSlotRef.current], [])
@@ -1005,6 +1005,11 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     setSleepRemaining(minutes ? minutes * 60 : null)
   }, [])
 
+  const timeValue = useMemo<PlayerTime>(
+    () => ({ currentTime, duration: durationSeconds, progress }),
+    [currentTime, durationSeconds, progress],
+  )
+
   const value = useMemo<PlayerContextValue>(
     () => ({
       tracks,
@@ -1012,9 +1017,6 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       currentTrack,
       palette,
       isPlaying,
-      currentTime,
-      duration: durationSeconds,
-      progress,
       volume,
       isMuted,
       repeatMode,
@@ -1054,9 +1056,6 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       currentTrack,
       palette,
       isPlaying,
-      currentTime,
-      durationSeconds,
-      progress,
       volume,
       isMuted,
       repeatMode,
@@ -1089,11 +1088,21 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     ],
   )
 
-  return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>
+  return (
+    <PlayerContext.Provider value={value}>
+      <PlayerTimeContext.Provider value={timeValue}>{children}</PlayerTimeContext.Provider>
+    </PlayerContext.Provider>
+  )
 }
 
 export function usePlayer(): PlayerContextValue {
   const context = useContext(PlayerContext)
   if (!context) throw new Error('usePlayer debe usarse dentro de PlaybackProvider')
+  return context
+}
+
+export function usePlayerTime(): PlayerTime {
+  const context = useContext(PlayerTimeContext)
+  if (!context) throw new Error('usePlayerTime debe usarse dentro de PlaybackProvider')
   return context
 }

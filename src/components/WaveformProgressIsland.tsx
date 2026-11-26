@@ -1,13 +1,14 @@
 import { useMemo } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
-import { usePlayer } from '../hooks/usePlayer'
+import { usePlayer, usePlayerTime } from '../hooks/usePlayer'
 import { formatTime } from '../lib/format'
 import { downsample, MAX_WAVE_BARS, MAX_WAVE_BARS_LOW } from '../lib/performance'
 
 const FALLBACK_BARS = Array.from({ length: 80 }, (_, i) => 0.2 + Math.abs(Math.sin(i / 5)) * 0.45)
 
 export function WaveformProgressIsland() {
-  const { currentTrack, progress, currentTime, duration, seekRatio, settings } = usePlayer()
+  const { currentTrack, seekRatio, settings } = usePlayer()
+  const { currentTime, duration, progress } = usePlayerTime()
   const sourceBars = currentTrack?.waveform?.length ? currentTrack.waveform : FALLBACK_BARS
   const bars = useMemo(
     () =>

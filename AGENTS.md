@@ -35,6 +35,9 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
   cambiar de pista, ocultar la ventana o cerrar. Al hidratar se aplica al `<audio>` en
   `loadedmetadata`, sin iniciar la reproducción. `src/lib/persistence.ts` contiene el serializador
   y `shouldPersist`, que excluye la posición del guardado completo.
+- `currentTime`, `duration` y `progress` viven en `PlayerTimeContext` (`usePlayerTime()`), separado
+  del contexto del reproductor: `timeupdate` solo repinta la barra de onda y el anillo de progreso.
+  `src/lib/playerTime.ts` calcula el progreso sin dependencias de React.
 - Metadatos y portadas se leen del archivo. La identidad usa SHA-256 (nombre, tamaño, fecha,
   primeros y últimos 64 KB; `src/lib/fingerprint.ts`), con 32 hex como ID y el hash completo en
   `contentHash`. El ID FNV-1a antiguo se reconoce como duplicado; si el ID nuevo colisiona con

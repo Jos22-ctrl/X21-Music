@@ -450,8 +450,39 @@ export function SettingsDialog({ tab, onTabChange, onClose }: SettingsDialogProp
                 <Check size={13} /> Música en tu carpeta de Users y ajustes legibles
               </li>
             </ul>
+            <h3>Novedades de 0.9.11</h3>
+            <ul className="about__list">
+              <li>
+                <Check size={13} /> Posición guardada sin depender de `timeupdate` y crossfade real
+                entre dos pistas
+              </li>
+              <li>
+                <Check size={13} /> Identificación SHA-256 con biblioteca migrada a IndexedDB v2
+              </li>
+              <li>
+                <Check size={13} /> Importación que copia el original y valida las rutas
+              </li>
+              <li>
+                <Check size={13} /> Tiempo aislado: las islas no se repintan con cada segundo
+              </li>
+              <li>
+                <Check size={13} /> Forma de onda limitada a archivos pequeños
+              </li>
+              <li>
+                <Check size={13} /> Actualizaciones verificadas con SHA-256 y clave de un solo uso
+              </li>
+              <li>
+                <Check size={13} /> CSP estricta y Electron con navegación e IPC restringidos
+              </li>
+              <li>
+                <Check size={13} /> Instalación para todos los usuarios con elevación en su momento
+              </li>
+              <li>
+                <Check size={13} /> Integración continua y release con instalador y suma SHA-256
+              </li>
+            </ul>
             <p className="about__footer">
-              Versión {APP_VERSION} · Etapa {APP_STAGE} · © 2026 X21 Team Group
+              Versión {APP_VERSION} · Etapa {APP_STAGE} · Créditos: Claude y X21
             </p>
           </div>
         )}

@@ -58,14 +58,14 @@ async function ensureMusicDir() {
 /** Evita sobrescribir canciones con el mismo nombre. */
 async function uniqueDestination(directory, fileName) {
   const safe = safeFileName(fileName)
-  const extension = path.extname(safe)
-  const base = path.basename(safe, extension) || 'cancion'
-  let candidate = path.join(directory, `${base}${extension}`)
+  const extension = path.win32.extname(safe)
+  const base = path.win32.basename(safe, extension) || 'cancion'
+  let candidate = path.win32.join(directory, `${base}${extension}`)
   let counter = 2
   for (;;) {
     try {
       await fs.access(candidate)
-      candidate = path.join(directory, `${base} (${counter++})${extension}`)
+      candidate = path.win32.join(directory, `${base} (${counter++})${extension}`)
     } catch {
       return candidate
     }
@@ -88,7 +88,7 @@ async function copyToMusicDir(source) {
   const dir = await ensureMusicDir()
   const origin = await validateImportSource(source, dir)
   if (isWithinDirectory(dir, origin)) return origin
-  const destination = await uniqueDestination(dir, path.basename(origin))
+  const destination = await uniqueDestination(dir, path.win32.basename(origin))
   await fs.copyFile(origin, destination)
   return destination
 }
@@ -99,7 +99,7 @@ async function moveToMusicDir(source) {
   const origin = await validateImportSource(source, dir)
   if (isWithinDirectory(dir, origin)) return origin
 
-  const destination = await uniqueDestination(dir, path.basename(origin))
+  const destination = await uniqueDestination(dir, path.win32.basename(origin))
   try {
     await fs.rename(origin, destination)
   } catch (error) {

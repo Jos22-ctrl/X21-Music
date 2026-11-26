@@ -24,7 +24,7 @@ function isNewerVersion(latest, current) {
 
 /** Acepta solo un nombre de .exe, nunca una ruta que pueda salir de la carpeta. */
 function safeInstallerName(name) {
-  const base = path.basename(String(name || ''))
+  const base = path.win32.basename(String(name || ''))
   if (!base.toLowerCase().endsWith('.exe')) return ''
   if (base.includes('..') || base.includes('/') || base.includes('\\')) return ''
   return base

@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  publicar:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run dist:win
+
+      # GitHub publica el .exe con puntos en lugar de espacios; la suma debe usar ese nombre.
+      - name: Generar el SHA-256
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          $exe = "release/X21 Music Setup $version.exe"
+          $asset = "X21.Music.Setup.$version.exe"
+          $hash = (Get-FileHash -Algorithm SHA256 -Path $exe).Hash.ToLowerInvariant()
+          "$hash  $asset" | Set-Content -Path "release/X21 Music Setup $version.sha256" -Encoding ascii
+
+      - name: Publicar el release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          gh release create "${{ github.ref_name }}" `
+            "release/X21 Music Setup $version.exe" `
+            "release/X21 Music Setup $version.sha256" `
+            --title "X21 Music pre-alpha $version" `
+            --notes "Instalador NSIS x64 de X21 Music pre-alpha $version. El resumen de cambios está en «Acerca de»."

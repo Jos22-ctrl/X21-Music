@@ -1,10 +1,11 @@
-# X21 Music — pre-alpha 0.9.10
+# X21 Music — pre-alpha 0.9.11
 
 Reproductor de música **local para Windows** con **Diseño de Islas** y una interfaz cuyo
 color se deriva por completo de la portada de la canción actual. Todo se procesa en el
 dispositivo: metadatos ID3, portadas, forma de onda, biblioteca y paleta. Sin backend.
 
-**Versión actual: pre-alpha 0.9.10** (también visible en «Acerca de» dentro de la app).
+**Versión actual: pre-alpha 0.9.11** (también visible en «Acerca de» dentro de la app, junto
+al resumen de novedades). Proyecto creado por **Claude y X21**.
 
 ## Características
 
@@ -80,7 +81,8 @@ dispositivo: metadatos ID3, portadas, forma de onda, biblioteca y paleta. Sin ba
   detiene la reproducción al terminar.
 - **Vista «Canciones»**: vista completa sin reproductor, con canciones, álbum, artista, fecha
   de incorporación y duración; filtros «Recién agregadas/Todas», búsqueda y ordenación.
-- **Acerca de**: versión `pre-alpha 0.9.10` y resumen de características desde el panel.
+- **Acerca de**: versión `pre-alpha 0.9.11`, resumen de características y novedades de esta
+  versión, con créditos a Claude y X21.
 - **Accesibilidad**: contraste verificado, foco visible, `prefers-reduced-motion` y
   `prefers-reduced-transparency`.
 
@@ -130,10 +132,15 @@ npm run build          # tsc -b && vite build
 npm run dist:win
 ```
 
-Crea `release/X21 Music Setup 0.9.10.exe` (instalador NSIS x64, con acceso directo en
+Crea `release/X21 Music Setup 0.9.11.exe` (instalador NSIS x64, con acceso directo en
 escritorio y menú de inicio). Cierra el reproductor antes de empaquetar o instalar para
 evitar que Windows bloquee el archivo. Para desarrollo rápido, `npm run electron` abre la
-ventana Electron usando el `dist` ya compilado.
+ventana Electron usando el `dist` ya compilado. La única configuración de empaquetado es el
+bloque `build` de `package.json`.
+
+`.github/workflows/ci.yml` comprueba lint, pruebas y compilación en cada cambio de `main`.
+`.github/workflows/release.yml` genera el instalador al publicar una etiqueta `vX.Y.Z`, calcula
+su SHA-256 con el nombre con puntos que usa GitHub y crea el release con ambos assets.
 
 También se genera una PWA instalable cuando se sirve por http(s); en Electron se carga
 por `file://` y el service worker no se registra.

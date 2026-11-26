@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron')
+const { app, BrowserWindow, Menu, shell, ipcMain, session } = require('electron')
 const { spawn } = require('node:child_process')
 const crypto = require('node:crypto')
 const fs = require('node:fs/promises')
@@ -13,6 +13,10 @@ const {
   isValidImportSource,
   MAX_IMPORT_BYTES,
 } = require('./paths.cjs')
+const {
+  isAllowedExternalUrl,
+  isAllowedFrameUrl,
+} = require('./security.cjs')
 
 const DEV_URL = process.env.X21_DEV_URL || 'http://localhost:5173'
 const GITHUB_REPO = 'Jos22-ctrl/X21-Music'
@@ -22,6 +26,19 @@ let folderPromise = null
 let updatesFolderPromise = null
 /** Clave entregada a la interfaz en la última comprobación; se consume al instalar. */
 let pendingUpdate = null
+
+const frameOptions = () => ({ devUrl: DEV_URL, isPackaged: app.isPackaged })
+
+/** Todo IPC exige que el emisor sea nuestra propia página. */
+function trustedHandle(channel, handler) {
+  ipcMain.handle(channel, (event, ...args) => {
+    const frameUrl = event?.senderFrame?.url?.() ?? ''
+    if (!isAllowedFrameUrl(frameUrl, frameOptions())) {
+      throw new Error('Solicitud no permitida desde esta página.')
+    }
+    return handler(event, ...args)
+  })
+}
 
 /** C:\Users\<usuario>\X21 Music\Música, creada la primera vez que se necesita. */
 async function ensureMusicDir() {
@@ -164,9 +181,9 @@ async function fileSha256(filePath) {
   return hash.digest('hex')
 }
 
-ipcMain.handle('music:get-folder', async () => ensureMusicDir())
+trustedHandle('music:get-folder', async () => ensureMusicDir())
 
-ipcMain.handle('music:copy-files', async (_event, paths) => {
+trustedHandle('music:copy-files', async (_event, paths) => {
   const copied = []
   for (const source of Array.isArray(paths) ? paths : []) {
     try {
@@ -178,7 +195,7 @@ ipcMain.handle('music:copy-files', async (_event, paths) => {
   return copied
 })
 
-ipcMain.handle('music:move-files', async (_event, paths) => {
+trustedHandle('music:move-files', async (_event, paths) => {
   const moved = []
   for (const source of Array.isArray(paths) ? paths : []) {
     try {
@@ -190,7 +207,7 @@ ipcMain.handle('music:move-files', async (_event, paths) => {
   return moved
 })
 
-ipcMain.handle('music:save-file', async (_event, payload) => {
+trustedHandle('music:save-file', async (_event, payload) => {
   const dir = await ensureMusicDir()
   const data = payload?.data
   if (!(data instanceof ArrayBuffer) || data.byteLength > MAX_IMPORT_BYTES) {
@@ -201,7 +218,7 @@ ipcMain.handle('music:save-file', async (_event, payload) => {
   return destination
 })
 
-ipcMain.handle('music:trash-files', async (_event, paths) => {
+trustedHandle('music:trash-files', async (_event, paths) => {
   const dir = await ensureMusicDir()
   const trashed = []
   for (const candidate of Array.isArray(paths) ? paths : []) {
@@ -217,7 +234,7 @@ ipcMain.handle('music:trash-files', async (_event, paths) => {
   return trashed
 })
 
-ipcMain.handle('music:open-folder', async () => {
+trustedHandle('music:open-folder', async () => {
   const dir = await ensureMusicDir()
   await shell.openPath(dir)
 })
@@ -252,7 +269,7 @@ async function checkGitHubUpdates(currentVersion) {
   }
 }
 
-ipcMain.handle('update:check', async () => {
+trustedHandle('update:check', async () => {
   const folder = await ensureUpdatesDir()
   const currentVersion = app.getVersion()
 
@@ -276,7 +293,7 @@ ipcMain.handle('update:check', async () => {
   return { ...info, key, folder }
 })
 
-ipcMain.handle('update:install', async (_event, key) => {
+trustedHandle('update:install', async (_event, key) => {
   if (!pendingUpdate || !key || key !== pendingUpdate.key) {
     throw new Error('Clave de actualización no válida. Busca de nuevo las actualizaciones.')
   }
@@ -322,7 +339,7 @@ ipcMain.handle('update:install', async (_event, key) => {
   return { installerPath }
 })
 
-ipcMain.handle('update:open-folder', async () => {
+trustedHandle('update:open-folder', async () => {
   const dir = await ensureUpdatesDir()
   await shell.openPath(dir)
 })
@@ -342,17 +359,15 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
+      nodeIntegrationInWorker: false,
       sandbox: true,
+      webviewTag: false,
+      allowRunningInsecureContent: false,
       spellcheck: false,
     },
   })
 
   mainWindow.once('ready-to-show', () => mainWindow?.show())
-
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url)
-    return { action: 'deny' }
-  })
 
   if (app.isPackaged) {
     void mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'))
@@ -364,6 +379,17 @@ function createWindow() {
     mainWindow = null
   })
 }
+
+// REQUIERE PRUEBA MANUAL EN WINDOWS: navegación, enlaces externos y permisos.
+app.on('web-contents-created', (_event, contents) => {
+  contents.setWindowOpenHandler(({ url }) => {
+    if (isAllowedExternalUrl(url)) void shell.openExternal(url)
+    return { action: 'deny' }
+  })
+  contents.on('will-navigate', (event, url) => {
+    if (!isAllowedFrameUrl(url, frameOptions())) event.preventDefault()
+  })
+})
 
 if (!app.requestSingleInstanceLock()) {
   app.quit()
@@ -378,6 +404,9 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(() => {
     // Sin barra «File / Edit / View / Window / Help»: la app es solo música.
     Menu.setApplicationMenu(null)
+    session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => {
+      callback(false)
+    })
     createWindow()
   })
 

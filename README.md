@@ -96,6 +96,7 @@ dispositivo: metadatos ID3, portadas, forma de onda, biblioteca y paleta. Sin ba
 | Permisos | Escribir en tu carpeta de usuario (música, ajustes en IndexedDB, actualizaciones y `%TEMP%`). La opción «Instalar para todos los usuarios» pide **Administrador**. |
 | Internet | **Opcional**. Solo se usa para buscar releases en GitHub; sin red, la app cae a la carpeta local de actualizaciones. Reproducir música funciona siempre offline. |
 | Cuenta / backend | **Ninguno**. Todo se procesa en el equipo. |
+| Protección | CSP estricta en producción, sin scripts en línea; Electron bloquea navegaciones ajenas, permisos del sistema y enlaces que no sean HTTPS. |
 
 No hay cifras oficiales de RAM/CPU en el proyecto. Al basarse en Electron 45/Chromium, lo
 razonable es **4 GB de RAM y un procesador x64 de doble núcleo**; con 2 GB puede funcionar,

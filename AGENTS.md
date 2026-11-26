@@ -15,8 +15,11 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
 - `src/components/*`: islas visuales. `src/index.css`: sistema visual completo.
 - `electron/`: ventana principal y preload de Electron; IPC `music:*` crea y usa
   `C:\Users\<usuario>\X21 Music\Música`, e IPC `update:*` gestiona las actualizaciones.
-  `electron/update.cjs` compara versiones y valida `update.json`. `dist:win` genera el
-  instalador NSIS.
+  `electron/update.cjs` compara versiones y valida `update.json`. `electron/paths.cjs` y
+  `electron/security.cjs` validan rutas, ventanas e IPC. `dist:win` genera el instalador NSIS.
+- La CSP se inyecta con un plugin de Vite (`src/lib/csp.ts`): en producción prohíbe scripts en
+  línea; en desarrollo permite HMR. Electron rechaza navegaciones ajenas, abre solo HTTPS externo
+  y exige que el emisor de cada IPC sea la página de la app; los permisos del sistema se deniegan.
 - `src/lib/musicFolder.ts`: puente renderer→main para copiar/mover/guardar/borrar archivos en esa
   carpeta (`webUtils.getPathForFile` en el preload; `fs.copyFile` por defecto y `fs.rename` solo
   en modo explícito; `shell.trashItem` al eliminar).

@@ -1,0 +1,388 @@
+.app-shell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(9px, 1.1vw, 16px);
+  height: 100vh;
+  height: 100dvh;
+  padding: clamp(12px, 1.6vw, 22px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  container-type: inline-size;
+  container-name: app;
+  --cover-column: clamp(190px, 24vw, 330px);
+  --cover-max: clamp(190px, 24vw, 330px);
+}
+
+/* Sin portada la columna se reduce y los controles ganan espacio. */
+.app-shell[data-cover='none'] {
+  --cover-column: clamp(170px, 19vw, 250px);
+  --cover-max: clamp(170px, 19vw, 250px);
+}
+
+.app-shell::-webkit-scrollbar {
+  display: none;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  align-content: center;
+  justify-content: space-between;
+  flex: none;
+  flex-wrap: wrap;
+  gap: clamp(8px, 1vw, 12px);
+  min-height: clamp(28px, 3.4vh, 36px);
+  padding: 0 6px;
+}
+
+.view-switch {
+  display: flex;
+  gap: 2px;
+  flex: none;
+  padding: 3px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.view-switch button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color 200ms ease, background 200ms ease;
+}
+
+.view-switch button.is-active {
+  color: var(--text-1);
+  background: color-mix(in oklab, var(--c-vibrant) 28%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  margin-left: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.brand__mark {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  border-radius: 4px;
+  background: linear-gradient(135deg, var(--accent), var(--c-vibrant));
+  box-shadow: 0 0 18px color-mix(in oklab, var(--accent) 60%, transparent);
+}
+
+.brand__name {
+  font-size: clamp(11px, 1vw, 13px);
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  white-space: nowrap;
+  color: var(--text-2);
+}
+
+.brand__name strong {
+  color: var(--text-1);
+}
+
+.brand__tag {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  color: var(--text-3);
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
+  padding-left: 10px;
+  margin-left: 4px;
+}
+
+.header-palette {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+.reorder-hint {
+  flex: none;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-2);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 1180px) {
+  .reorder-hint {
+    display: none;
+  }
+}
+
+.header-palette span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  transition: background 600ms ease;
+}
+
+.player-grid {
+  /* Ocupa solo el espacio disponible: la biblioteca crece hacia dentro con scroll. */
+  flex: 1 1 0;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  gap: clamp(9px, 1.1vw, 16px);
+  grid-template-columns:
+    minmax(0, var(--cover-column))
+    minmax(300px, 1.25fr)
+    minmax(240px, 0.9fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: 'cover center library';
+  align-items: stretch;
+  justify-content: center;
+}
+
+.songs-area {
+  flex: 1 1 0;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+}
+
+.songs-area > .island {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.area-cover {
+  position: relative;
+  grid-area: cover;
+  min-width: 0;
+  min-height: 0;
+  /* El cuadrado se dimensiona solo con el espacio real de su celda. */
+  container-type: size;
+  display: grid;
+  place-items: center;
+}
+
+.area-center {
+  grid-area: center;
+  container-type: inline-size;
+  container-name: center;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1vw, 14px);
+  justify-content: center;
+  justify-content: safe center;
+  align-items: stretch;
+  align-content: safe center;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.area-center::-webkit-scrollbar {
+  display: none;
+}
+
+.area-center > * {
+  flex: none;
+}
+
+.center-slot {
+  position: relative;
+  min-width: 0;
+}
+
+.center-slot > .island {
+  width: 100%;
+}
+
+/* Si la portada o la biblioteca se mueven al centro, conservan una forma útil. */
+.center-slot[data-island-id='cover'] > .island {
+  width: min(100%, 320px);
+  aspect-ratio: 1;
+  margin-inline: auto;
+}
+
+.center-slot[data-island-id='library'] > .island {
+  min-height: 180px;
+  max-height: 320px;
+}
+
+.area-library {
+  position: relative;
+  grid-area: library;
+  container-type: inline-size;
+  container-name: library;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.area-library > .island {
+  height: 100%;
+  min-height: 0;
+}
+
+.area-cover > .island {
+  width: min(100cqw, 100cqh, var(--cover-max));
+  height: auto;
+  aspect-ratio: 1;
+  justify-self: center;
+  padding: clamp(8px, 1.2cqw, 14px);
+}
+
+/* Tablet / ventana reducida: portada y controles arriba, biblioteca completa abajo. */
+@media (max-width: 1180px) {
+  .player-grid {
+    grid-template-columns: minmax(0, var(--cover-column)) minmax(300px, 1.25fr);
+    grid-template-areas:
+      'cover center'
+      'library library';
+    grid-template-rows: minmax(0, 1fr) minmax(min(230px, 30vh), 0.55fr);
+  }
+}
+
+/* Ventanas anchas pero poco altas: compactar sin recortar controles. */
+@media (min-width: 721px) and (max-height: 700px) {
+  .app-shell {
+    padding-block: 10px;
+    gap: 8px;
+  }
+
+  .player-grid {
+    gap: 8px;
+  }
+
+  .area-center {
+    gap: 7px;
+  }
+
+  .area-library {
+    min-height: 0;
+  }
+
+  .area-cover > .island {
+    width: min(100cqw, 100cqh, calc(var(--cover-max) * 0.82));
+  }
+}
+
+@media (min-width: 721px) and (max-width: 1180px) and (max-height: 700px) {
+  .player-grid {
+    grid-template-rows: minmax(0, 1fr) minmax(min(180px, 26vh), 0.5fr);
+  }
+}
+
+/* Móvil: una sola columna con scroll natural dentro de la ventana. */
+@media (max-width: 900px) {
+  .view-switch button span {
+    display: none;
+  }
+
+  .view-switch button {
+    padding: 8px;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    padding: clamp(10px, 3vw, 16px);
+  }
+
+  .app-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .brand {
+    flex: 1 1 100%;
+  }
+
+  .player-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'cover'
+      'center'
+      'library';
+    grid-template-rows: auto auto minmax(330px, 48vh);
+  }
+
+  .area-cover {
+    container-type: normal;
+    display: block;
+  }
+
+  .area-cover > .island {
+    width: min(100%, 420px);
+    height: auto;
+    aspect-ratio: 1;
+    margin: 0 auto;
+    padding: 10px;
+  }
+
+  .area-library {
+    min-height: 330px;
+  }
+
+  .songs-area {
+    min-height: 65vh;
+  }
+
+  .brand__tag {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .brand {
+    gap: 7px;
+  }
+
+  .brand__mark {
+    width: 10px;
+    height: 10px;
+  }
+
+  .brand__name {
+    letter-spacing: 0.12em;
+  }
+
+  .header-palette {
+    display: none;
+  }
+
+  .header-palette span {
+    width: 7px;
+    height: 7px;
+  }
+}
+

@@ -1,0 +1,392 @@
+/* --- Portada -------------------------------------------------------------- */
+.cover-island {
+  display: grid;
+  place-items: center;
+  padding: 12px;
+}
+
+.cover-island__img,
+.cover-island__empty {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: calc(var(--radius-island) - 10px);
+  object-fit: cover;
+  object-position: center;
+}
+
+.cover-island__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: var(--text-3);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  background: color-mix(in oklab, var(--c-vibrant) 14%, rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.cover-island__gloss {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+}
+
+/* --- Información ---------------------------------------------------------- */
+.info-island {
+  padding: 20px 24px 18px;
+}
+
+.eyebrow {
+  margin: 0 0 7px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.info-island__title {
+  margin: 0;
+  font-size: clamp(20px, 2.2vw, 30px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.info-island__meta {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.palette-dots {
+  display: flex;
+  gap: 7px;
+  margin-top: 16px;
+}
+
+.palette-dots span {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  transition: background 600ms ease;
+}
+
+/* --- Títulos: una línea por defecto, desplazamiento opcional -------------- */
+.marquee-text {
+  position: relative;
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.marquee-text__measure {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: max-content;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.marquee-text__value {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.marquee-text.is-scrolling {
+  text-overflow: clip;
+}
+
+.marquee-text__track {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  animation: marquee-scroll var(--marquee-duration, 14s) linear infinite;
+}
+
+.marquee-text__track > span {
+  flex: none;
+  padding-right: 2.5em;
+}
+
+.marquee-text:hover .marquee-text__track {
+  animation-play-state: paused;
+}
+
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* --- Forma de onda -------------------------------------------------------- */
+.wave-island {
+  padding: 14px 20px 12px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.wave-island__bars {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 66px;
+}
+
+.wave-bar {
+  flex: 1;
+  min-width: 2px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.22);
+  transition: background 180ms ease;
+}
+
+.wave-bar.is-played {
+  background: linear-gradient(to top, var(--c-vibrant), var(--accent));
+}
+
+.wave-island__times {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  font-size: 9px;
+  letter-spacing: 0.02em;
+  color: var(--text-3);
+}
+
+/* --- Deslizador de canciones ---------------------------------------------- */
+.track-slider-island {
+  overflow: visible;
+  padding: 10px 14px;
+}
+
+.track-slider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.045);
+  touch-action: none;
+}
+
+.track-slider__side {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 15px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition: color 180ms ease, background 180ms ease;
+}
+
+.track-slider__side:hover {
+  color: var(--text-1);
+  background: color-mix(in oklab, var(--c-vibrant) 20%, transparent);
+}
+
+.track-slider__knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 52px;
+  height: 52px;
+  margin: -26px 0 0 -26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--on-accent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--accent) 92%, transparent),
+    color-mix(in oklab, var(--c-vibrant) 82%, transparent)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 8px 20px color-mix(in oklab, var(--accent) 40%, transparent);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition:
+    transform 320ms cubic-bezier(0.2, 0.9, 0.25, 1.25),
+    box-shadow 200ms ease;
+}
+
+.track-slider__knob.is-dragging {
+  transition: none;
+  cursor: grabbing;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 0 26px color-mix(in oklab, var(--accent) 70%, transparent);
+}
+
+.track-slider__grip {
+  display: flex;
+  gap: 3px;
+}
+
+.track-slider__grip i {
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: 0.85;
+}
+
+.track-slider__grip i:first-child,
+.track-slider__grip i:last-child {
+  height: 11px;
+  opacity: 0.55;
+}
+
+.track-slider__count {
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.track-slider__preview {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: calc(100% - 8px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(360px, 90%);
+  padding: 8px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: color-mix(in oklab, var(--c-muted) 42%, rgba(18, 18, 26, 0.92));
+  box-shadow: 0 12px 30px color-mix(in oklab, var(--c-dominant) 45%, transparent);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.track-slider__thumbs {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+.track-slider__thumbs span {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-right: -8px;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: color-mix(in oklab, var(--c-vibrant) 22%, rgba(255, 255, 255, 0.06));
+  color: var(--text-3);
+}
+
+.track-slider__thumbs span.is-center {
+  width: 34px;
+  height: 34px;
+  margin-right: 0;
+  z-index: 1;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.track-slider__thumbs img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.track-slider__preview-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.track-slider__preview-text strong,
+.track-slider__preview-text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-slider__preview-text strong {
+  font-size: 12px;
+  color: var(--text-1);
+}
+
+.track-slider__preview-text small {
+  font-size: 10px;
+  color: var(--text-3);
+}
+
+.track-slider__badge {
+  flex: none;
+  margin-left: 6px;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--on-accent);
+  background: linear-gradient(135deg, var(--accent), var(--c-vibrant));
+}
+
+@keyframes chevronPulseRight {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateX(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(3px);
+  }
+}
+
+@keyframes chevronPulseLeft {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateX(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-3px);
+  }
+}
+
+.animate-chevron-right {
+  animation: chevronPulseRight 1.8s ease-in-out infinite;
+}
+
+.animate-chevron-left {
+  animation: chevronPulseLeft 1.8s ease-in-out infinite;
+}
+

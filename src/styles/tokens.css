@@ -1,0 +1,99 @@
+/* Tokens registrados: transición de 600 ms al cambiar de canción. */
+@property --c-dominant {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #2a2740;
+}
+@property --c-vibrant {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #7c6cff;
+}
+@property --c-muted {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #3b3557;
+}
+@property --accent {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #7c6cff;
+}
+@property --cover-dim {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0.35;
+}
+
+:root {
+  color-scheme: dark;
+
+  /* Paleta derivada de la portada (se sobreescribe en :root desde App.tsx). */
+  --c-dominant: #2a2740;
+  --c-vibrant: #7c6cff;
+  --c-muted: #3b3557;
+  --accent: #7c6cff;
+  --on-accent: #0a0a0c;
+  --cover-dim: 0.35;
+  --cover-url: none;
+
+  --bg-dark: #0a0a0c;
+  --island-gap: 14px;
+  --radius-island: 28px;
+  --radius-inner: 16px;
+  --radius-pill: 999px;
+
+  --text-1: rgba(255, 255, 255, 0.96);
+  --text-2: rgba(255, 255, 255, 0.66);
+  --text-3: rgba(255, 255, 255, 0.42);
+
+  transition:
+    --c-dominant 600ms ease,
+    --c-vibrant 600ms ease,
+    --c-muted 600ms ease,
+    --accent 600ms ease,
+    --cover-dim 600ms ease;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg-dark);
+  color: var(--text-1);
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible,
+[role='slider']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+

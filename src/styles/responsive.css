@@ -1,0 +1,171 @@
+/* --- Adaptación interna según el ancho real de cada zona ----------------- */
+@container center (max-width: 420px) {
+  .info-island {
+    padding: 14px 16px 12px;
+  }
+
+  .info-island__title {
+    font-size: clamp(17px, 6cqw, 24px);
+  }
+
+  .info-island__meta {
+    font-size: 12px;
+  }
+
+  .eyebrow {
+    font-size: 9px;
+  }
+
+  .palette-dots {
+    margin-top: 12px;
+  }
+
+  .palette-dots span {
+    width: 12px;
+    height: 12px;
+  }
+
+  .wave-island {
+    padding: 10px 14px 8px;
+  }
+
+  .wave-island__bars {
+    gap: 1px;
+    height: 48px;
+  }
+
+  .wave-bar {
+    min-width: 1px;
+  }
+
+  .track-slider-island {
+    padding: 8px 10px;
+  }
+
+  .track-slider {
+    height: 48px;
+  }
+
+  .track-slider__side {
+    padding: 6px 10px;
+  }
+
+  .track-slider__side span {
+    display: none;
+  }
+
+  .track-slider__knob {
+    width: 44px;
+    height: 44px;
+    margin: -22px 0 0 -22px;
+  }
+
+  .controls-island {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .icon-btn {
+    width: 34px;
+    height: 34px;
+  }
+
+  .icon-btn.small {
+    width: 30px;
+    height: 30px;
+  }
+
+  .btn-play {
+    width: 52px;
+    height: 52px;
+  }
+
+  .volume-island {
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .volume-island__value {
+    display: none;
+  }
+}
+
+@container center (max-width: 300px) {
+  .controls-island {
+    gap: 6px;
+    padding: 10px;
+  }
+
+  .controls-island .icon-btn {
+    width: 30px;
+    height: 30px;
+  }
+
+  .controls-island .btn-play {
+    width: 46px;
+    height: 46px;
+  }
+
+  .volume-island {
+    gap: 6px;
+    padding: 8px 10px;
+  }
+
+  .volume-island__value {
+    display: none;
+  }
+}
+
+@container center (max-width: 260px) {
+  .palette-dots {
+    display: none;
+  }
+
+  .wave-island__times {
+    font-size: 8px;
+  }
+}
+
+@container library (max-width: 360px) {
+  .library-island {
+    padding: 12px;
+    border-radius: 20px;
+  }
+
+  .library-island__head {
+    flex-wrap: wrap;
+  }
+
+  .tabs {
+    flex: 1;
+  }
+
+  .tabs button {
+    flex: 1;
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+
+  .library-island__actions {
+    margin-left: auto;
+  }
+
+  .search-field {
+    margin: 10px 0 8px;
+    padding: 8px 10px;
+  }
+
+  .search-field input {
+    font-size: 11px;
+  }
+
+  .track-row__time {
+    display: none;
+  }
+
+  .track-row__thumb {
+    width: 30px;
+    height: 30px;
+  }
+}
+

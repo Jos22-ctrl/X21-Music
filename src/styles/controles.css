@@ -1,0 +1,207 @@
+/* --- Botones: relleno teñido que se diluye en el cristal, SIN backdrop-filter --- */
+.icon-btn,
+.btn {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  color: var(--text-1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-pill);
+  /* El degradado termina en transparente: el fondo de la isla se ve a través. */
+  background: radial-gradient(
+    130% 130% at 25% 12%,
+    color-mix(in oklab, var(--c-vibrant) 34%, transparent),
+    color-mix(in oklab, var(--c-muted) 16%, transparent) 62%,
+    transparent 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 4px 14px color-mix(in oklab, var(--c-dominant) 22%, transparent);
+  transition:
+    transform 140ms ease,
+    background 220ms ease,
+    color 220ms ease;
+}
+
+.icon-btn {
+  width: 40px;
+  height: 40px;
+}
+
+.icon-btn.small {
+  width: 32px;
+  height: 32px;
+}
+
+.icon-btn.tiny {
+  width: 26px;
+  height: 26px;
+}
+
+.icon-btn.tiny.danger:hover {
+  color: #ffd7dc;
+  background: radial-gradient(
+    130% 130% at 25% 12%,
+    color-mix(in oklab, #ff5d73 48%, transparent),
+    color-mix(in oklab, #ff5d73 22%, transparent) 65%,
+    transparent 100%
+  );
+}
+
+.btn {
+  padding: 9px 16px;
+  border-radius: var(--radius-inner);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.icon-btn:hover,
+.btn:hover {
+  background: radial-gradient(
+    130% 130% at 25% 12%,
+    color-mix(in oklab, var(--c-vibrant) 46%, transparent),
+    color-mix(in oklab, var(--c-muted) 24%, transparent) 62%,
+    transparent 100%
+  );
+}
+
+.icon-btn:active,
+.btn:active {
+  transform: scale(0.96);
+  background: radial-gradient(
+    130% 130% at 25% 12%,
+    color-mix(in oklab, var(--c-vibrant) 52%, transparent),
+    color-mix(in oklab, var(--c-vibrant) 26%, transparent) 65%,
+    transparent 100%
+  );
+}
+
+.icon-btn.is-active {
+  background: linear-gradient(135deg, var(--accent), var(--c-vibrant));
+  color: var(--on-accent);
+}
+
+.repeat-one {
+  position: absolute;
+  right: 4px;
+  bottom: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.btn-play {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  color: var(--on-accent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--accent) 90%, transparent),
+    color-mix(in oklab, var(--c-vibrant) 78%, transparent)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 10px 26px color-mix(in oklab, var(--accent) 38%, transparent);
+  transition: transform 140ms ease;
+}
+
+.btn-play:hover {
+  transform: scale(1.04);
+}
+
+.btn-play:active {
+  transform: scale(0.96);
+}
+
+.btn-play__ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: conic-gradient(
+    rgba(255, 255, 255, 0.92) calc(var(--progress, 0) * 360deg),
+    rgba(255, 255, 255, 0.16) 0deg
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+  pointer-events: none;
+}
+
+/* --- Deslizadores --------------------------------------------------------- */
+.slider {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 18px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(
+    to right,
+    var(--accent) 0%,
+    var(--c-vibrant) var(--fill, 0%),
+    rgba(255, 255, 255, 0.14) var(--fill, 0%),
+    rgba(255, 255, 255, 0.14) 100%
+  );
+}
+
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -4px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 26%, transparent);
+}
+
+.slider::-moz-range-track {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.slider::-moz-range-progress {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(to right, var(--accent), var(--c-vibrant));
+}
+
+.slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 26%, transparent);
+}
+
+/* --- Barra de reproducción simple: solo cambia la isla de controles -------- */
+.simple-controls {
+  gap: clamp(8px, 1vw, 12px);
+}
+
+.controls-island.simple-controls .btn-play {
+  width: 54px;
+  height: 54px;
+}
+
+@container center (max-width: 420px) {
+  .controls-island.simple-controls .btn-play {
+    width: 48px;
+    height: 48px;
+  }
+}
+

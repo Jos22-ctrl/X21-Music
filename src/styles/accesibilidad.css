@@ -1,0 +1,58 @@
+/* --- Modo de bajo rendimiento --------------------------------------------- */
+:root[data-low-performance='true'] {
+  transition-duration: 120ms;
+}
+
+:root[data-low-performance='true'] .ambient__cover {
+  display: none;
+}
+
+:root[data-low-performance='true'] .ambient__gradient {
+  animation: none;
+}
+
+:root[data-low-performance='true'] .island {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: color-mix(in oklab, var(--c-muted) 32%, #14141c);
+}
+
+:root[data-low-performance='true'] .marquee-text__track,
+:root[data-low-performance='true'] .spin {
+  animation: none;
+}
+
+:root[data-low-performance='true'] .ambient__dim,
+:root[data-low-performance='true'] .header-palette span,
+:root[data-low-performance='true'] .palette-dots span,
+:root[data-low-performance='true'] .wave-bar {
+  transition: none;
+}
+
+/* --- Accesibilidad / movimiento ------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    transition-duration: 120ms;
+  }
+
+  .ambient__gradient {
+    animation: none;
+  }
+
+  .spin,
+  .animate-chevron-right,
+  .animate-chevron-left,
+  .marquee-text__track {
+    animation: none;
+  }
+
+  .track-slider__knob {
+    transition-duration: 120ms;
+  }
+
+  .ambient__dim,
+  .header-palette span,
+  .palette-dots span {
+    transition-duration: 120ms;
+  }
+}

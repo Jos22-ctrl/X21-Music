@@ -39,6 +39,19 @@ describe('configuración de la versión 0.9.12', () => {
     expect(existsSync(resolve(process.cwd(), 'public/apple-touch-icon-180x180.png'))).toBe(false)
   })
 
+  it('no arrastra dependencias sin uso ni las empaqueta en el instalador', () => {
+    const pkg = JSON.parse(read('package.json')) as {
+      dependencies?: Record<string, string>
+      devDependencies: Record<string, string>
+    }
+    expect(pkg.dependencies).toBeUndefined()
+    for (const dependencia of ['react', 'react-dom', 'idb', 'lucide-react', 'music-metadata']) {
+      expect(pkg.devDependencies[dependencia]).toBeTruthy()
+    }
+    expect(pkg.devDependencies.fflate).toBeUndefined()
+    expect(pkg.devDependencies.motion).toBeUndefined()
+  })
+
   it('incluye los dos workflows de CI y release', () => {
     const ci = read('.github/workflows/ci.yml')
     expect(ci).toContain('npm run lint')

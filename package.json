@@ -17,16 +17,12 @@
     "electron": "electron .",
     "dist:win": "npm run build && electron-builder --win --x64 --publish never"
   },
-  "dependencies": {
-    "fflate": "^0.8.3",
+  "devDependencies": {
     "idb": "^8.0.4",
     "lucide-react": "^1.79.0",
-    "motion": "^14.14.0",
     "music-metadata": "^12.8.3",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
-  },
-  "devDependencies": {
+    "react-dom": "^19.3.1",
     "@tailwindcss/vite": "^4.3.5",
     "@testing-library/jest-dom": "^8.0.0",
     "@types/node": "^24.19.2",

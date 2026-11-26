@@ -68,7 +68,31 @@ dispositivo: metadatos ID3, portadas, forma de onda, biblioteca y paleta. Sin ba
 
 ## Requisitos
 
-Node.js 20+ y npm. Para empaquetar, electron-builder descarga los binarios de Windows.
+### Para usar la app
+
+| Requisito | Detalle |
+| --- | --- |
+| Sistema operativo | **Windows 10 o superior** (incluye Windows 11). Electron 45 ya no soporta Windows 7/8/8.1. |
+| Arquitectura | **64 bits (x64)**. El instalador es NSIS x64; no hay versión de 32 bits ni ARM. |
+| Espacio en disco | ~121 MB el instalador y ~408 MB instalada, más el espacio para tu música y las copias en `C:\Users\<usuario>\X21 Music\Música`. |
+| Permisos | Escribir en tu carpeta de usuario (música, ajustes en IndexedDB, actualizaciones y `%TEMP%`). La opción «Instalar para todos los usuarios» pide **Administrador**. |
+| Internet | **Opcional**. Solo se usa para buscar releases en GitHub; sin red, la app cae a la carpeta local de actualizaciones. Reproducir música funciona siempre offline. |
+| Cuenta / backend | **Ninguno**. Todo se procesa en el equipo. |
+
+No hay cifras oficiales de RAM/CPU en el proyecto. Al basarse en Electron 45/Chromium, lo
+razonable es **4 GB de RAM y un procesador x64 de doble núcleo**; con 2 GB puede funcionar,
+pero se nota con bibliotecas grandes porque cada canción se guarda en IndexedDB.
+
+La ventana mínima es **480 × 420 px**, así que sirve cualquier resolución habitual (se
+recomienda 1024 × 768 o más para ver las tres zonas). El instalador no está firmado: Windows
+mostrará el aviso de «editor desconocido» la primera vez. Cierra el reproductor antes de
+instalar o actualizar.
+
+### Para desarrollar o compilar
+
+Node.js 20+ y npm. Para empaquetar, electron-builder descarga los binarios de Windows. Esto
+**no hace falta** para instalar y usar el `.exe` publicado en
+[Releases](https://github.com/Jos22-ctrl/X21-Music/releases).
 
 ## Desarrollo
 

@@ -4,6 +4,7 @@ import {
   Check,
   Clock,
   FolderOpen,
+  Gauge,
   Info,
   LayoutGrid,
   Moon,
@@ -270,6 +271,26 @@ export function SettingsDialog({ tab, onTabChange, onClose }: SettingsDialogProp
                 >
                   <RotateCcw size={13} /> Restablecer
                 </button>
+              </div>
+            </section>
+
+            <section className="settings-section">
+              <h3 className="settings-section__title">
+                <Gauge size={14} /> Rendimiento
+              </h3>
+              <div className="setting-row">
+                <div className="setting-row__info">
+                  <strong>Modo de bajo rendimiento</strong>
+                  <small>
+                    Quita desenfoques y animaciones, reduce la forma de onda y muestra menos
+                    canciones a la vez. Útil en equipos lentos o con bibliotecas grandes.
+                  </small>
+                </div>
+                <Toggle
+                  checked={settings.lowPerformance}
+                  onChange={(value) => updateSettings({ lowPerformance: value })}
+                  label="Modo de bajo rendimiento"
+                />
               </div>
             </section>
 

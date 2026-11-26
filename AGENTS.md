@@ -27,8 +27,10 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
 - Ajustes persistentes en `preferences`: transición gradual (`crossfadeSeconds`, fundido
   de volumen antes/después del cambio), `skipSilence`, `preventDuplicates`, `monoDark`,
   `marqueeTitles` (false por defecto: una línea con elipsis; true: desplazamiento si no cabe),
-  `playbackBarStyle` (`simple` por defecto; `clasico` recupera la barra de controles anterior) e
-  `islandLayout` (isla por ranura; se reordena con Ctrl + arrastrar en ambos diseños).
+  `playbackBarStyle` (`simple` por defecto; `clasico` recupera la barra de controles anterior),
+  `islandLayout` (isla por ranura; se reordena con Ctrl + arrastrar en ambos diseños) y
+  `lowPerformance` (false por defecto: sin desenfoques/animaciones, forma de onda reducida y
+  biblioteca paginada).
 - Al importar se toma una copia en memoria del `File`, se leen metadatos/forma de onda y se
   mueve el original a la carpeta de música de Users; `StoredTrack.filePath` guarda la ruta.
   «Copiar biblioteca» exporta los blobs ya guardados a esa misma carpeta.
@@ -52,6 +54,10 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
   sin duplicados ni huecos. `src/hooks/useIslandDrag.ts` implementa Ctrl + clic izquierdo +
   arrastrar con umbral de 5 px, captura de puntero y supresión del clic posterior.
 - `prefers-reduced-motion` y `prefers-reduced-transparency` tienen prioridad.
+- La rejilla usa `flex: 1 1 0` y filas `minmax(0, …)`; la biblioteca y la vista de canciones
+  desplazan su lista dentro de la isla (`overflow-y: auto`), nunca fuera de la ventana.
+  `src/lib/performance.ts` limita las filas dibujadas (50 normal / 20 en bajo rendimiento) y
+  reduce la forma de onda a 24 barras en modo de bajo rendimiento.
 
 ## 4. Interfaz
 
@@ -77,7 +83,7 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
   `X21-XXXXXXXX`, descarga el instalador a `%TEMP%\X21 Music Updates` y lo lanza con
   `/X21KEY=<clave>` `/X21MODE=update`. `build/installer.nsh` añade las opciones Instalar,
   Reinstalar, Instalar para todos los usuarios y Actualizar; esta última valida la clave.
-  Versión `pre-alpha 0.9.8` en `src/lib/version.ts` y en `package.json`.
+  Versión `pre-alpha 0.9.10` en `src/lib/version.ts` y en `package.json`.
 - `monoDark` sustituye la paleta por `MONO_PALETTE` y desactiva la imagen de fondo.
 
 ## 5. Paleta desde la portada (reemplaza "Color de acento extraído de la portada")

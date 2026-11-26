@@ -21,7 +21,7 @@ export function MarqueeText({ children, className = '', title }: MarqueeTextProp
   const plain = typeof children === 'string' || typeof children === 'number' ? String(children) : ''
 
   useEffect(() => {
-    if (!settings.marqueeTitles || !plain) {
+    if (settings.lowPerformance || !settings.marqueeTitles || !plain) {
       setOverflowing(false)
       return
     }
@@ -44,7 +44,15 @@ export function MarqueeText({ children, className = '', title }: MarqueeTextProp
 
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
-  }, [plain, settings.marqueeTitles])
+  }, [plain, settings.marqueeTitles, settings.lowPerformance])
+
+  if (settings.lowPerformance) {
+    return (
+      <span className={`marquee-text ${className}`.trim()} title={title ?? plain}>
+        <span className="marquee-text__value">{children}</span>
+      </span>
+    )
+  }
 
   const scrolling = settings.marqueeTitles && overflowing
   const duration = Math.max(8, Math.min(28, plain.length * 0.45))

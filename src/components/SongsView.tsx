@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Music, Play, Plus, Search } from 'lucide-react'
 import { usePlayer } from '../hooks/usePlayer'
 import { formatTime } from '../lib/format'
+import { pageSizeFor } from '../lib/performance'
 import type { Track } from '../types'
 import { MarqueeText } from './MarqueeText'
 
@@ -12,19 +13,31 @@ const dateLabel = (timestamp: number): string =>
   new Date(timestamp).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: '2-digit' })
 
 export function SongsView() {
-  const { tracks, currentTrack, isImporting, importProgress, importFiles, playTrack, enqueue } =
-    usePlayer()
+  const {
+    tracks,
+    currentTrack,
+    isImporting,
+    importProgress,
+    importFiles,
+    playTrack,
+    enqueue,
+    settings,
+  } = usePlayer()
   const [filter, setFilter] = useState<Filter>('recent')
   const [sort, setSort] = useState<Sort>('recent')
   const [query, setQuery] = useState('')
+  const deferredQuery = useDeferredValue(query)
   const fileRef = useRef<HTMLInputElement>(null)
   const folderRef = useRef<HTMLInputElement>(null)
+
+  const pageSize = pageSizeFor(settings.lowPerformance)
+  const [limit, setLimit] = useState(pageSize)
 
   const artists = useMemo(() => new Set(tracks.map((track) => track.artist).filter(Boolean)).size, [tracks])
   const albums = useMemo(() => new Set(tracks.map((track) => track.album).filter(Boolean)).size, [tracks])
 
   const visible = useMemo(() => {
-    const search = query.trim().toLowerCase()
+    const search = deferredQuery.trim().toLowerCase()
     const list = search
       ? tracks.filter((track) =>
           `${track.title} ${track.artist} ${track.album}`.toLowerCase().includes(search),
@@ -38,7 +51,10 @@ export function SongsView() {
       album: (a, b) => a.album.localeCompare(b.album, 'es') || a.title.localeCompare(b.title, 'es'),
     }
     return list.sort(filter === 'recent' ? by.recent : by[sort])
-  }, [filter, query, sort, tracks])
+  }, [deferredQuery, filter, sort, tracks])
+  const shown = visible.slice(0, limit)
+
+  useEffect(() => setLimit(pageSize), [deferredQuery, filter, pageSize, sort])
 
   const addFiles = (files: FileList | null): void => {
     if (files?.length) void importFiles(Array.from(files))
@@ -110,7 +126,7 @@ export function SongsView() {
         </div>
 
         <div className="songs-table__body island-scroll">
-          {visible.length === 0 ? (
+          {shown.length === 0 ? (
             <div className="library-empty">
               <Music size={36} strokeWidth={1.3} />
               <strong>{query ? 'Sin resultados' : 'Todavía no hay canciones'}</strong>
@@ -127,7 +143,7 @@ export function SongsView() {
               )}
             </div>
           ) : (
-            visible.map((track, index) => (
+            shown.map((track, index) => (
               <div
                 key={track.id}
                 className={`song-row ${currentTrack?.id === track.id ? 'is-current' : ''}`}
@@ -171,6 +187,15 @@ export function SongsView() {
                 </button>
               </div>
             ))
+          )}
+          {visible.length > limit && (
+            <button
+              type="button"
+              className="chip chip--muted list-more"
+              onClick={() => setLimit((current) => current + pageSize)}
+            >
+              Mostrar más ({visible.length - limit})
+            </button>
           )}
         </div>
 

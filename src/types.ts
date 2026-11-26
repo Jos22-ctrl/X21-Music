@@ -45,6 +45,8 @@ export interface PlaybackSettings {
   islandLayout: IslandLayout
   /** Barra simple por defecto; «clasico» recupera la barra de controles anterior. */
   playbackBarStyle: PlaybackBarStyle
+  /** Reduce animaciones, desenfoques y cantidad de elementos dibujados. */
+  lowPerformance: boolean
 }
 
 export interface PersistedSettings {

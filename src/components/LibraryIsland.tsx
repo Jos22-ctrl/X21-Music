@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { FilePlus, FolderOpen, LoaderCircle, Music, Plus, Search, Trash2 } from 'lucide-react'
 import { usePlayer } from '../hooks/usePlayer'
 import { formatTime } from '../lib/format'
+import { pageSizeFor } from '../lib/performance'
 import { MarqueeText } from './MarqueeText'
 
 export function LibraryIsland() {
@@ -15,19 +16,31 @@ export function LibraryIsland() {
     playTrack,
     enqueue,
     removeTrack,
+    settings,
   } = usePlayer()
   const [tab, setTab] = useState<'library' | 'queue'>('library')
   const [query, setQuery] = useState('')
+  const deferredQuery = useDeferredValue(query)
   const fileRef = useRef<HTMLInputElement>(null)
   const folderRef = useRef<HTMLInputElement>(null)
 
+  const pageSize = pageSizeFor(settings.lowPerformance)
+  const [limit, setLimit] = useState(pageSize)
+
   const source = tab === 'queue' ? queue : tracks
-  const search = query.trim().toLowerCase()
-  const visible = search
-    ? source.filter((track) =>
-        `${track.title} ${track.artist} ${track.album}`.toLowerCase().includes(search),
-      )
-    : source
+  const search = deferredQuery.trim().toLowerCase()
+  const visible = useMemo(
+    () =>
+      search
+        ? source.filter((track) =>
+            `${track.title} ${track.artist} ${track.album}`.toLowerCase().includes(search),
+          )
+        : source,
+    [search, source],
+  )
+  const shown = visible.slice(0, limit)
+
+  useEffect(() => setLimit(pageSize), [pageSize, search, tab])
 
   const handleFiles = (files: FileList | null): void => {
     if (files?.length) void importFiles(Array.from(files))
@@ -98,7 +111,7 @@ export function LibraryIsland() {
       </label>
 
       <div className="library-island__list island-scroll">
-        {visible.length === 0 ? (
+        {shown.length === 0 ? (
           <div className="library-empty">
             <Music size={34} strokeWidth={1.3} />
             <strong>{search ? 'Sin resultados' : 'Tu biblioteca está vacía'}</strong>
@@ -115,7 +128,7 @@ export function LibraryIsland() {
             )}
           </div>
         ) : (
-          visible.map((track) => (
+          shown.map((track) => (
             <div
               key={track.id}
               className={`track-row ${currentTrack?.id === track.id ? 'is-current' : ''}`}
@@ -159,6 +172,15 @@ export function LibraryIsland() {
               </button>
             </div>
           ))
+        )}
+        {visible.length > limit && (
+          <button
+            type="button"
+            className="chip chip--muted list-more"
+            onClick={() => setLimit((current) => current + pageSize)}
+          >
+            Mostrar más ({visible.length - limit})
+          </button>
         )}
       </div>
 

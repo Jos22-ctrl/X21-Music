@@ -92,7 +92,9 @@ export default function App() {
       '--cover-url',
       !settings.monoDark && currentTrack?.coverUrl ? `url("${currentTrack.coverUrl}")` : 'none',
     )
-  }, [activePalette, currentTrack?.coverUrl, settings.monoDark])
+    style.setProperty('--low-performance', settings.lowPerformance ? '1' : '0')
+    document.documentElement.dataset.lowPerformance = settings.lowPerformance ? 'true' : 'false'
+  }, [activePalette, currentTrack?.coverUrl, settings.monoDark, settings.lowPerformance])
 
   return (
     <>

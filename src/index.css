@@ -1055,6 +1055,12 @@ input:focus-visible,
   -ms-overflow-style: none;
 }
 
+.list-more {
+  flex: none;
+  align-self: center;
+  margin: 4px 0 2px;
+}
+
 /* --- Adaptación interna según el ancho real de cada zona ----------------- */
 @container center (max-width: 420px) {
   .info-island {
@@ -1981,6 +1987,37 @@ input:focus-visible,
     flex: 1;
     width: auto;
   }
+}
+
+/* --- Modo de bajo rendimiento --------------------------------------------- */
+:root[data-low-performance='true'] {
+  transition-duration: 120ms;
+}
+
+:root[data-low-performance='true'] .ambient__cover {
+  display: none;
+}
+
+:root[data-low-performance='true'] .ambient__gradient {
+  animation: none;
+}
+
+:root[data-low-performance='true'] .island {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: color-mix(in oklab, var(--c-muted) 32%, #14141c);
+}
+
+:root[data-low-performance='true'] .marquee-text__track,
+:root[data-low-performance='true'] .spin {
+  animation: none;
+}
+
+:root[data-low-performance='true'] .ambient__dim,
+:root[data-low-performance='true'] .header-palette span,
+:root[data-low-performance='true'] .palette-dots span,
+:root[data-low-performance='true'] .wave-bar {
+  transition: none;
 }
 
 /* --- Accesibilidad / movimiento ------------------------------------------ */

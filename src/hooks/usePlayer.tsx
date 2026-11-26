@@ -86,6 +86,7 @@ const DEFAULT_SETTINGS: PlaybackSettings = {
   marqueeTitles: false,
   islandLayout: DEFAULT_ISLAND_LAYOUT,
   playbackBarStyle: 'simple',
+  lowPerformance: false,
 }
 
 const clampVolume = (value: number): number =>
@@ -101,6 +102,7 @@ function normalizeSettings(value?: Partial<PlaybackSettings>): PlaybackSettings 
     marqueeTitles: value?.marqueeTitles ?? DEFAULT_SETTINGS.marqueeTitles,
     islandLayout: normalizeIslandLayout(value?.islandLayout),
     playbackBarStyle: value?.playbackBarStyle === 'clasico' ? 'clasico' : 'simple',
+    lowPerformance: value?.lowPerformance ?? DEFAULT_SETTINGS.lowPerformance,
   }
 }
 

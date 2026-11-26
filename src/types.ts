@@ -10,6 +10,8 @@ export interface StoredTrack {
   fileName: string
   /** Ruta de la copia en C:\Users\<usuario>\X21 Music\Música, cuando existe. */
   filePath?: string | null
+  /** SHA-256 parcial de la importación; opcional para bibliotecas de la v1. */
+  contentHash?: string | null
   mimeType: string
   fileBlob: Blob
   coverBlob: Blob | null

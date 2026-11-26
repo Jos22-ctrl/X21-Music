@@ -1,4 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
+import { migrateTrackRecord } from './dbMigration'
 import { DEFAULT_PERSISTED_SNAPSHOT } from './persistence'
 import type { PersistedSettings, StoredTrack } from '../types'
 
@@ -21,8 +22,8 @@ let dbPromise: Promise<IDBPDatabase<X21Schema>> | null = null
 
 function getDb(): Promise<IDBPDatabase<X21Schema>> {
   if (!dbPromise) {
-    dbPromise = openDB<X21Schema>(DB_NAME, 1, {
-      upgrade(db) {
+    dbPromise = openDB<X21Schema>(DB_NAME, 2, {
+      upgrade(db, oldVersion, _newVersion, transaction) {
         if (!db.objectStoreNames.contains('tracks')) {
           const tracks = db.createObjectStore('tracks', { keyPath: 'id' })
           tracks.createIndex('by-added', 'addedAt')
@@ -30,6 +31,19 @@ function getDb(): Promise<IDBPDatabase<X21Schema>> {
         if (!db.objectStoreNames.contains('settings')) {
           db.createObjectStore('settings', { keyPath: 'key' })
         }
+        if (oldVersion < 2) {
+          // Migración v1 → v2: los registros antiguos no tenían contentHash.
+          const store = transaction.objectStore('tracks')
+          return (async () => {
+            let cursor = await store.openCursor()
+            while (cursor) {
+              const migrated = migrateTrackRecord(cursor.value)
+              if (migrated !== cursor.value) await cursor.update(migrated)
+              cursor = await cursor.continue()
+            }
+          })()
+        }
+        return undefined
       },
     }).catch((error: unknown) => {
       dbPromise = null

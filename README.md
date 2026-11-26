@@ -19,8 +19,9 @@ dispositivo: metadatos ID3, portadas, forma de onda, biblioteca y paleta. Sin ba
 - **Islas y botones teñidos**: las islas usan `backdrop-filter`, los botones solo relleno
   translúcido con brillo interior (nunca `backdrop-filter` anidado). Máximo cuatro islas.
 - **Biblioteca local**: importa archivos o carpetas (MP3, M4A, AAC, OGG, OPUS, WAV, FLAC…),
-  deduplica, guarda blobs en IndexedDB y lee título/artista/álbum/duración/carátula con
-  `music-metadata`.
+  deduplica por SHA-256 del archivo (reconoce también los IDs antiguos), guarda blobs en
+  IndexedDB v2 (migra automáticamente las bibliotecas v1) y lee título/artista/álbum/duración/
+  carátula con `music-metadata`.
 - **Cambio deslizable de canciones**: el control central se arrastra para avanzar o
   retroceder; al 70 % del recorrido se activa el salto y, si se mantiene en el borde,
   sigue saltando cada 500 ms. Muestra vista previa de la pista destino. También admite
@@ -158,7 +159,7 @@ ofrece **Instalar**, **Reinstalar**, **Instalar para todos los usuarios** y **Ac
 electron/            main.cjs, preload.cjs
 src/lib/color.ts     OKLCH, contraste WCAG, median-cut y paleta
 src/lib/palette.ts   muestreo 32×32 de la portada
-src/lib/db.ts        IndexedDB (canciones + ajustes, campo palette)
+src/lib/db.ts        IndexedDB v2 (canciones + ajustes, palette y contentHash)
 src/lib/metadata.ts  ID3 y forma de onda
 src/hooks/usePlayer  contexto del reproductor, ajustes y temporizador
 src/components/      islas, vista de canciones y panel de ajustes

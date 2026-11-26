@@ -8,7 +8,9 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
 - `src/lib/color.ts`: color science puro (sRGB ↔ OKLCH, WCAG, median-cut k=4, paleta).
 - `src/lib/palette.ts`: reduce la portada a 32×32 en canvas y extrae la paleta.
 - `src/lib/metadata.ts`: ID3/Vorbis (`music-metadata`) + forma de onda RMS.
-- `src/lib/db.ts`: IndexedDB (`idb`); cada registro de canción guarda su campo `palette`.
+- `src/lib/db.ts`: IndexedDB v2 (`idb`); cada registro guarda `palette` y `contentHash`. La v1 se
+  migra automáticamente añadiendo `contentHash: null` sin tocar otros campos
+  (`src/lib/dbMigration.ts`).
 - `src/hooks/usePlayer.tsx`: motor de audio, cola, modos, persistencia y Media Session.
 - `src/components/*`: islas visuales. `src/index.css`: sistema visual completo.
 - `electron/`: ventana principal y preload de Electron; IPC `music:*` crea y usa
@@ -32,8 +34,11 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
   cambiar de pista, ocultar la ventana o cerrar. Al hidratar se aplica al `<audio>` en
   `loadedmetadata`, sin iniciar la reproducción. `src/lib/persistence.ts` contiene el serializador
   y `shouldPersist`, que excluye la posición del guardado completo.
-- Metadatos y portadas se leen del archivo; deduplicación por huella nombre+tamaño+fecha y,
-  si `preventDuplicates` está activo, también por título/artista/álbum.
+- Metadatos y portadas se leen del archivo. La identidad usa SHA-256 (nombre, tamaño, fecha,
+  primeros y últimos 64 KB; `src/lib/fingerprint.ts`), con 32 hex como ID y el hash completo en
+  `contentHash`. El ID FNV-1a antiguo se reconoce como duplicado; si el ID nuevo colisiona con
+  contenido distinto se genera uno alternativo. Con `preventDuplicates` también se compara
+  título/artista/álbum.
 - Ajustes persistentes en `preferences`: `crossfadeSeconds` (segundos de solape A/B),
   `skipSilence` (sin pausa fija de 400 ms), `preventDuplicates`, `monoDark`,
   `marqueeTitles` (false por defecto: una línea con elipsis; true: desplazamiento si no cabe),

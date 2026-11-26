@@ -18,7 +18,12 @@ import {
   saveSettings,
   saveTrack,
 } from '../lib/db'
-import { fingerprint, isAudioFile } from '../lib/fingerprint'
+import {
+  fileHash,
+  isAudioFile,
+  legacyFingerprint,
+  resolveImportIdentity,
+} from '../lib/fingerprint'
 import { computeWaveform, readAudioMetadata } from '../lib/metadata'
 import { DEFAULT_ISLAND_LAYOUT, normalizeIslandLayout } from '../lib/islandLayout'
 import {
@@ -804,13 +809,21 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       const metaKey = (title: string, artist: string, album: string): string =>
         `${title}|${artist}|${album}`.trim().toLowerCase()
       let moveFailed = false
+      let identityCollision = false
 
       try {
         for (let i = 0; i < audioFiles.length; i++) {
           setImportProgress({ current: i + 1, total: audioFiles.length })
           const file = audioFiles[i]
-          const id = fingerprint(file)
-          if (collected.some((track) => track.id === id)) continue
+          // SHA-256 evita las colisiones del huésped de 32 bits; el ID antiguo sigue contando.
+          const hash = await fileHash(file)
+          const resolution = resolveImportIdentity(
+            { id: hash.slice(0, 32), hash, legacyId: legacyFingerprint(file) },
+            collected,
+          )
+          if (resolution.status === 'duplicate') continue
+          if (resolution.status === 'collision') identityCollision = true
+          const id = resolution.id
 
           // Copia en memoria antes de mover el original: el <input> lee del disco.
           const sourcePath = sourcePathOf(file)
@@ -855,6 +868,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
             durationMs: metadata.durationMs,
             fileName,
             filePath,
+            contentHash: resolution.hash,
             mimeType: stableFile.type || 'audio/mpeg',
             fileBlob: stableFile,
             coverBlob: metadata.coverBlob,
@@ -869,11 +883,16 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
           setTracks([...collected])
         }
 
+        const issues: string[] = []
         if (moveFailed) {
-          setError(
+          issues.push(
             'Las canciones se importaron, pero algunas no se pudieron mover a la carpeta de música.',
           )
         }
+        if (identityCollision) {
+          issues.push('Algunas canciones con ID en conflicto recibieron un identificador nuevo.')
+        }
+        if (issues.length) setError(issues.join(' '))
 
         if (importedIds.length) {
           setQueueIds((previous) =>

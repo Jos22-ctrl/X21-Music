@@ -38,6 +38,32 @@ function safeDownloadUrl(value) {
     : ''
 }
 
+function safeChecksumUrl(value) {
+  const url = safeDownloadUrl(value)
+  return /\.sha256$/i.test(url) ? url : ''
+}
+
+function normalizedSha256(value) {
+  const hash = String(value || '')
+    .trim()
+    .toLowerCase()
+  return /^[0-9a-f]{64}$/.test(hash) ? hash : ''
+}
+
+/** Lee la primera línea de un .sha256 (`hash  nombre.exe`). */
+function parseChecksumFile(text, installerName) {
+  const line = String(text || '')
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .find(Boolean)
+  if (!line) return ''
+  const parts = line.split(/\s+/)
+  const hash = normalizedSha256(parts[0])
+  if (!hash || !installerName || parts.length < 2) return hash
+  const name = parts.slice(1).join(' ').replace(/^\*/, '')
+  return name === path.win32.basename(installerName) ? hash : ''
+}
+
 /** Normaliza un release de GitHub o un update.json local y decide si hay actualización. */
 function normalizeUpdateInfo(raw, currentVersion, source = 'local') {
   const fallback = { available: false, currentVersion, source }
@@ -48,7 +74,11 @@ function normalizeUpdateInfo(raw, currentVersion, source = 'local') {
   if (!version || !installer || !isNewerVersion(version, currentVersion)) return fallback
 
   const installerUrl = safeDownloadUrl(raw.installerUrl)
-  if (source === 'github' && !installerUrl) return fallback
+  const checksumUrl = safeChecksumUrl(raw.checksumUrl)
+  const sha256 = normalizedSha256(raw.sha256 ?? raw.checksum)
+  // Nunca se ofrece un instalador sin una forma verificada de comprobarlo.
+  if (source === 'github' && (!installerUrl || !checksumUrl)) return fallback
+  if (source === 'local' && !sha256) return fallback
 
   return {
     available: true,
@@ -57,6 +87,8 @@ function normalizeUpdateInfo(raw, currentVersion, source = 'local') {
     installer,
     notes: typeof raw.notes === 'string' ? raw.notes.trim() : '',
     installerUrl,
+    checksumUrl,
+    sha256,
     releaseUrl: source === 'github' ? String(raw.releaseUrl || '') : '',
     source,
   }
@@ -67,5 +99,8 @@ module.exports = {
   isNewerVersion,
   safeInstallerName,
   safeDownloadUrl,
+  safeChecksumUrl,
+  normalizedSha256,
+  parseChecksumFile,
   normalizeUpdateInfo,
 }

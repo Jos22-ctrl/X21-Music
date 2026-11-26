@@ -143,22 +143,26 @@ El botón de actualizaciones de la cabecera (y «Ajustes → Actualizaciones») 
 el último release de `Jos22-ctrl/X21-Music` en GitHub. Si no hay red o no hay un release más
 nuevo, busca en `C:\Users\<usuario>\X21 Music\Actualizaciones`.
 
-Para publicar en GitHub, crea un release `vX.Y.Z` y sube el `.exe` como asset. Para publicar
-en local, coloca allí el instalador y un `update.json`:
+Para publicar en GitHub, crea un release `vX.Y.Z` y sube **dos assets**: el `.exe` y su
+`.sha256` con el formato `<hash>  <nombre.exe>` (sin los dos puntos que añade `certutil`). Un
+release sin ese archivo se descarta. Para publicar en local, coloca allí el instalador y un
+`update.json`:
 
 ```json
 {
   "version": "0.9.7",
   "installer": "X21 Music Setup 0.9.7.exe",
+  "sha256": "<64 hexadecimales>",
   "notes": "Novedades de esta versión"
 }
 ```
 
-La app compara la versión con la instalada. Si hay una más nueva, muestra una clave
-(`X21-XXXXXXXX`), descarga el instalador (de GitHub o de la carpeta local) a
-`%TEMP%\X21 Music Updates` y lo abre con la opción «Actualizar» preseleccionada. El instalador
-ofrece **Instalar**, **Reinstalar**, **Instalar para todos los usuarios** y **Actualizar**; esta
-última opción exige escribir la clave que mostró la app. Sin clave, la actualización se detiene.
+La app compara la versión con la instalada. Si hay una más nueva, muestra una clave de un solo
+uso (`X21-XXXXXXXX`), descarga por partes (máximo 200 MB y 60 s de timeout) el instalador y su
+suma a `%TEMP%\X21 Music Updates` y **solo lo abre si el SHA-256 coincide**. La clave cambia en
+cada búsqueda: un instalador guardado antes no sirve. El instalador ofrece **Instalar**,
+**Reinstalar**, **Instalar para todos los usuarios** y **Actualizar**; esta última opción exige
+escribir la clave que mostró la app. Sin clave o con una clave vieja, la actualización se detiene.
 
 ## Estructura
 

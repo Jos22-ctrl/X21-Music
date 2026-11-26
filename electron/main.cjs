@@ -3,7 +3,10 @@ const { spawn } = require('node:child_process')
 const crypto = require('node:crypto')
 const fs = require('node:fs/promises')
 const path = require('node:path')
-const { normalizeUpdateInfo } = require('./update.cjs')
+const {
+  normalizeUpdateInfo,
+  parseChecksumFile,
+} = require('./update.cjs')
 const {
   safeFileName,
   isWithinDirectory,
@@ -109,6 +112,58 @@ function makeUpdateKey() {
   return `X21-${crypto.randomBytes(4).toString('hex').toUpperCase()}`
 }
 
+const MAX_INSTALLER_BYTES = 200 * 1024 ** 2
+const MAX_CHECKSUM_BYTES = 64 * 1024
+const DOWNLOAD_TIMEOUT_MS = 60_000
+
+/** Descarga por partes con límite de tamaño y timeout; devuelve el SHA-256. */
+async function downloadWithHash(url, destination, maxBytes) {
+  const response = await fetch(url, {
+    headers: { 'User-Agent': 'X21-Music' },
+    signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
+  })
+  if (!response.ok) throw new Error('No se pudo descargar el archivo.')
+  const declared = Number(response.headers.get('content-length') ?? 0)
+  if (declared > maxBytes) throw new Error('El archivo descargado es demasiado grande.')
+  const reader = response.body?.getReader()
+  if (!reader) throw new Error('La descarga no devolvió datos.')
+  const hash = crypto.createHash('sha256')
+  const handle = await fs.open(destination, 'w')
+  let total = 0
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (!value) continue
+      total += value.byteLength
+      if (total > maxBytes) throw new Error('El archivo descargado es demasiado grande.')
+      hash.update(value)
+      await handle.write(value)
+    }
+  } finally {
+    await handle.close().catch(() => undefined)
+    await reader.cancel().catch(() => undefined)
+  }
+  return hash.digest('hex')
+}
+
+/** Hash de un archivo local sin cargarlo entero en memoria. */
+async function fileSha256(filePath) {
+  const hash = crypto.createHash('sha256')
+  const handle = await fs.open(filePath, 'r')
+  try {
+    const buffer = Buffer.allocUnsafe(1024 * 1024)
+    for (;;) {
+      const { bytesRead } = await handle.read(buffer, 0, buffer.length, null)
+      if (!bytesRead) break
+      hash.update(buffer.subarray(0, bytesRead))
+    }
+  } finally {
+    await handle.close()
+  }
+  return hash.digest('hex')
+}
+
 ipcMain.handle('music:get-folder', async () => ensureMusicDir())
 
 ipcMain.handle('music:copy-files', async (_event, paths) => {
@@ -175,7 +230,9 @@ async function checkGitHubUpdates(currentVersion) {
     })
     if (!response.ok) return null
     const release = await response.json()
-    const asset = (release.assets || []).find((item) => /\.exe$/i.test(item.name || ''))
+    const assets = release.assets || []
+    const asset = assets.find((item) => /\.exe$/i.test(item.name || ''))
+    const checksum = assets.find((item) => /\.sha256$/i.test(item.name || ''))
     if (!asset) return null
 
     return normalizeUpdateInfo(
@@ -183,6 +240,7 @@ async function checkGitHubUpdates(currentVersion) {
         version: String(release.tag_name || ''),
         installer: asset.name,
         installerUrl: asset.browser_download_url,
+        checksumUrl: checksum?.browser_download_url || '',
         releaseUrl: release.html_url,
         notes: release.body || '',
       },
@@ -227,18 +285,32 @@ ipcMain.handle('update:install', async (_event, key) => {
   await fs.mkdir(downloadDir, { recursive: true })
   const installerPath = path.join(downloadDir, pendingUpdate.installer)
 
+  let expected = pendingUpdate.sha256
   if (pendingUpdate.source === 'github') {
-    const response = await fetch(pendingUpdate.installerUrl, {
-      headers: { 'User-Agent': 'X21-Music' },
-    })
-    if (!response.ok) throw new Error('No se pudo descargar el instalador desde GitHub.')
-    await fs.writeFile(installerPath, Buffer.from(await response.arrayBuffer()))
+    if (!pendingUpdate.checksumUrl) {
+      throw new Error('El release no incluye su archivo .sha256; no se puede verificar.')
+    }
+    const checksumPath = path.join(downloadDir, `${pendingUpdate.installer}.sha256`)
+    await downloadWithHash(pendingUpdate.checksumUrl, checksumPath, MAX_CHECKSUM_BYTES)
+    expected = parseChecksumFile(
+      await fs.readFile(checksumPath, 'utf8'),
+      pendingUpdate.installer,
+    )
+    await downloadWithHash(pendingUpdate.installerUrl, installerPath, MAX_INSTALLER_BYTES)
   } else {
     const source = path.join(pendingUpdate.folder, pendingUpdate.installer)
     await fs.access(source)
     await fs.copyFile(source, installerPath)
   }
 
+  // Ningún instalador se lanza sin comparar su SHA-256 con el publicado.
+  const actual = await fileSha256(installerPath)
+  if (!expected || actual !== expected) {
+    await fs.unlink(installerPath).catch(() => undefined)
+    throw new Error('La comprobación SHA-256 ha fallado; el instalador no se ha abierto.')
+  }
+
+  // REQUIERE PRUEBA MANUAL EN WINDOWS: descarga real, verificación y handshake con el NSIS.
   const child = spawn(installerPath, [`/X21KEY=${key}`, '/X21MODE=update'], {
     detached: true,
     stdio: 'ignore',

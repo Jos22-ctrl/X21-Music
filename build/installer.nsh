@@ -62,7 +62,7 @@
     Pop $x21RadioReinstall
     ${NSD_CreateRadioButton} 10u 69u 320u 18u "Instalar para todos los usuarios"
     Pop $x21RadioAllUsers
-    ${NSD_CreateRadioButton} 10u 91u 320u 18u "Actualizar (pide una clave)"
+    ${NSD_CreateRadioButton} 10u 91u 320u 18u "Actualizar (clave de la app, de un solo uso)"
     Pop $x21RadioUpdate
 
     ${If} $x21ModeArg == "update"
@@ -108,7 +108,7 @@
     nsDialogs::Create 1018
     Pop $x21KeyDialog
 
-    ${NSD_CreateLabel} 0u 0u 340u 20u "Clave facilitada por la aplicación:"
+    ${NSD_CreateLabel} 0u 0u 340u 20u "Clave de un solo uso de X21 Music:"
     Pop $R0
     ${NSD_CreateText} 10u 25u 320u 20u ""
     Pop $x21KeyEdit
@@ -119,12 +119,12 @@
     ${NSD_GetText} $x21KeyEdit $x21TypedKey
 
     ${If} $x21ExpectedKey == ""
-      MessageBox MB_ICONSTOP|MB_TOPMOST "La actualización debe iniciarse desde X21 Music. Abre la app y pulsa «Buscar actualizaciones» para obtener una clave."
+      MessageBox MB_ICONSTOP|MB_TOPMOST "La actualización debe iniciarse desde X21 Music. Abre la app, pulsa «Buscar actualizaciones» y usa «Descargar e instalar»: la clave cambia cada vez y el instalador se verifica con SHA-256."
       Abort
     ${EndIf}
 
     ${If} $x21TypedKey != $x21ExpectedKey
-      MessageBox MB_ICONSTOP|MB_TOPMOST "La clave no es correcta. Cópiala de X21 Music y vuelve a intentarlo."
+      MessageBox MB_ICONSTOP|MB_TOPMOST "La clave no es correcta o ya se usó. Vuelve a X21 Music, busca actualizaciones de nuevo y copia la clave nueva."
       Abort
     ${EndIf}
   FunctionEnd

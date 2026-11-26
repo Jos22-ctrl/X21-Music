@@ -106,9 +106,11 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
 - Panel con pestañas «Ajustes», «Actualizaciones» y «Acerca de»; botón de actualizaciones en
   la cabecera. Primero consulta `https://api.github.com/repos/Jos22-ctrl/X21-Music/releases/latest`
   y, si falla o no hay versión mayor, lee `update.json` y el `.exe` de
-  `C:\Users\<usuario>\X21 Music\Actualizaciones`. Si hay versión mayor, genera una clave
-  `X21-XXXXXXXX`, descarga el instalador a `%TEMP%\X21 Music Updates` y lo lanza con
-  `/X21KEY=<clave>` `/X21MODE=update`. `build/installer.nsh` añade las opciones Instalar,
+  `C:\Users\<usuario>\X21 Music\Actualizaciones`. Si hay versión mayor, genera una clave de un
+  solo uso `X21-XXXXXXXX`, descarga con límite de 200 MB y timeout de 60 s el instalador y su
+  `.sha256` a `%TEMP%\X21 Music Updates`. Solo se lanza si el SHA-256 coincide; un release sin
+  `.sha256` se descarta. Se lanza con `/X21KEY=<clave>` `/X21MODE=update`.
+  `build/installer.nsh` añade las opciones Instalar,
   Reinstalar, Instalar para todos los usuarios y Actualizar; esta última valida la clave.
   Versión `pre-alpha 0.9.10` en `src/lib/version.ts` y en `package.json`.
 - `monoDark` sustituye la paleta por `MONO_PALETTE` y desactiva la imagen de fondo.

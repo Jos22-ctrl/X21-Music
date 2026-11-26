@@ -37,12 +37,14 @@ export function UpdateSection() {
     try {
       await api.installUpdate(info.key)
       setStatus(
-        `Instalador descargado desde ${
-          info?.source === 'github' ? 'GitHub' : 'la carpeta local'
-        } y abierto. Escribe la clave cuando te la pida.`,
+        `Instalador verificado con SHA-256 y abierto (origen: ${
+          info?.source === 'github' ? 'GitHub' : 'carpeta local'
+        }). Escribe la clave de un solo uso en la opción «Actualizar».`,
       )
     } catch {
-      setError('No se pudo abrir el instalador. Vuelve a buscar actualizaciones.')
+      setError(
+        'No se pudo verificar o abrir el instalador. Vuelve a buscar actualizaciones; la clave cambia cada vez.',
+      )
     } finally {
       setInstalling(false)
     }
@@ -62,7 +64,8 @@ export function UpdateSection() {
     <div className="update-section">
       <p className="settings-intro">
         Busca primero en los releases de GitHub y, si no hay red o no hay uno más nuevo, en tu
-        carpeta local con <code>update.json</code>. La app te dará una clave para el instalador.
+        carpeta local con <code>update.json</code>. La app verificará el SHA-256 del instalador
+        antes de abrirlo y te dará una clave de un solo uso para confirmar la actualización.
       </p>
 
       <div className="setting-row">
@@ -132,7 +135,8 @@ export function UpdateSection() {
             <Download size={13} /> {installing ? 'Descargando…' : 'Descargar e instalar'}
           </button>
           <small className="update-hint">
-            El instalador preguntará por la clave en la opción «Actualizar».
+            El instalador debe abrirse desde aquí: elige «Actualizar» y escribe la clave. Cambia en
+            cada búsqueda, así que un instalador guardado antes no servirá.
           </small>
         </div>
       )}

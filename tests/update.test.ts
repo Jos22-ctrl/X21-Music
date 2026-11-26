@@ -2,9 +2,13 @@ import { describe, expect, it } from 'vitest'
 import {
   isNewerVersion,
   normalizeUpdateInfo,
+  parseChecksumFile,
+  safeChecksumUrl,
   safeDownloadUrl,
   safeInstallerName,
 } from '../electron/update.cjs'
+
+const HASH = 'a'.repeat(64)
 
 describe('actualizaciones', () => {
   it('compara versiones con prefijo y sufijo', () => {
@@ -25,7 +29,12 @@ describe('actualizaciones', () => {
   it('normaliza update.json y descarta datos incompletos', () => {
     expect(
       normalizeUpdateInfo(
-        { version: '0.9.7', installer: 'X21 Music Setup 0.9.7.exe', notes: 'Mejoras' },
+        {
+          version: '0.9.7',
+          installer: 'X21 Music Setup 0.9.7.exe',
+          notes: 'Mejoras',
+          sha256: HASH,
+        },
         '0.9.6',
       ),
     ).toEqual({
@@ -35,9 +44,19 @@ describe('actualizaciones', () => {
       installer: 'X21 Music Setup 0.9.7.exe',
       notes: 'Mejoras',
       installerUrl: '',
+      checksumUrl: '',
+      sha256: HASH,
       releaseUrl: '',
       source: 'local',
     })
+
+    expect(
+      normalizeUpdateInfo(
+        { version: '0.9.7', installer: 'setup.exe' },
+        '0.9.6',
+        'local',
+      ).available,
+    ).toBe(false)
 
     expect(normalizeUpdateInfo({ version: '0.9.6', installer: 'x.exe' }, '0.9.6').available).toBe(
       false,
@@ -48,14 +67,18 @@ describe('actualizaciones', () => {
 
   it('acepta releases de GitHub solo con URL de descarga de GitHub', () => {
     const url = 'https://github.com/Jos22-ctrl/X21-Music/releases/download/v0.9.7/setup.exe'
+    const checksumUrl = `${url}.sha256`
     expect(safeDownloadUrl(url)).toBe(url)
     expect(safeDownloadUrl('https://ejemplo.com/setup.exe')).toBe('')
+    expect(safeChecksumUrl(checksumUrl)).toBe(checksumUrl)
+    expect(safeChecksumUrl(url)).toBe('')
 
     const info = normalizeUpdateInfo(
       {
         version: 'v0.9.7',
         installer: 'setup.exe',
         installerUrl: url,
+        checksumUrl,
         releaseUrl: 'https://github.com/Jos22-ctrl/X21-Music/releases/tag/v0.9.7',
         notes: 'Release',
       },
@@ -65,6 +88,7 @@ describe('actualizaciones', () => {
     expect(info.available).toBe(true)
     expect(info.source).toBe('github')
     expect(info.installerUrl).toBe(url)
+    expect(info.checksumUrl).toBe(checksumUrl)
 
     expect(
       normalizeUpdateInfo(
@@ -73,5 +97,12 @@ describe('actualizaciones', () => {
         'github',
       ).available,
     ).toBe(false)
+  })
+
+  it('lee el SHA-256 del archivo de suma y rechaza nombres distintos', () => {
+    expect(parseChecksumFile(`${HASH}  setup.exe\n`, 'setup.exe')).toBe(HASH)
+    expect(parseChecksumFile(HASH, 'setup.exe')).toBe(HASH)
+    expect(parseChecksumFile(`${HASH}  otro.exe`, 'setup.exe')).toBe('')
+    expect(parseChecksumFile('no es un hash', 'setup.exe')).toBe('')
   })
 })

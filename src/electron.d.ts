@@ -8,6 +8,10 @@ declare global {
     /** Origen del instalador: release de GitHub o carpeta local. */
     source?: 'github' | 'local'
     installerUrl?: string
+    /** URL del `.sha256` publicado junto al instalador. */
+    checksumUrl?: string
+    /** SHA-256 esperado (local) o vacío si se toma del `.sha256` remoto. */
+    sha256?: string
     releaseUrl?: string
     /** Clave que muestra la app y que debe escribirse en el instalador. */
     key?: string

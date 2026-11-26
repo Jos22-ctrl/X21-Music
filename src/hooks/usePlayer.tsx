@@ -27,6 +27,7 @@ import {
 import { computeWaveform, readAudioMetadata } from '../lib/metadata'
 import { DEFAULT_ISLAND_LAYOUT, normalizeIslandLayout } from '../lib/islandLayout'
 import { computeProgress, type PlayerTime } from '../lib/playerTime'
+import { reconcileQueue } from '../lib/queue'
 import {
   clampPersistedTime,
   clampPersistedVolume,
@@ -504,8 +505,10 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       const views = records.map(makeView)
       setTracks(views)
       const knownIds = new Set(views.map((view) => view.id))
-      const validQueue = (storedSettings?.queueIds ?? views.map((view) => view.id)).filter((id) =>
-        knownIds.has(id),
+      // Una cola antigua no debe dejar fuera canciones que ya están en la biblioteca.
+      const validQueue = reconcileQueue(
+        storedSettings?.queueIds,
+        views.map((view) => view.id),
       )
 
       setSettings(normalizeSettings(storedSettings?.preferences))
@@ -909,7 +912,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
 
         if (importedIds.length) {
           setQueueIds((previous) =>
-            previous.length ? [...previous, ...importedIds] : collected.map((track) => track.id),
+            reconcileQueue([...previous, ...importedIds], collected.map((track) => track.id)),
           )
           if (!latestRef.current.currentId) setCurrentId(importedIds[0])
         }

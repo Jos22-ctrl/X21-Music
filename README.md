@@ -77,6 +77,8 @@ al resumen de novedades). Proyecto creado por **Claude y X21**.
 - **Estado que sobrevive al cierre**: volumen, cola, pista, ajustes y posición se guardan en
   IndexedDB sin depender de los eventos de tiempo; la posición se actualiza cada 5 s mientras suena
   y se fuerza al pausar, cambiar de canción o cerrar. Al abrir, la canción continúa donde estaba.
+  La cola se completa con las canciones de la biblioteca que faltaran, así que una cola guardada
+  corta no limita la reproducción.
 - **Temporizador de apagado**: 5, 10, 15, 30, 45 o 60 minutos; muestra la cuenta atrás y
   detiene la reproducción al terminar.
 - **Vista «Canciones»**: vista completa sin reproductor, con canciones, álbum, artista, fecha

@@ -32,7 +32,9 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
   repetición y aleatorio; el fundido es de potencia constante y respeta `volume²` y silencio.
   Pausa/seek finalizan el fundido; `repeat one` reinicia sin solapar.
 - `skipSilence` significa solo «Sin pausa entre canciones»: suprime el hueco fijo de 400 ms.
-- Repetición `off | all | one`, aleatorio e historial de cola persistidos. La posición se lee
+- Repetición `off | all | one`, aleatorio e historial de cola persistidos. La cola guardada se
+  reconcilia con la biblioteca al hidratar y al importar (`src/lib/queue.ts`): conserva el orden
+  elegido y añade las canciones que faltaban, sin perder duplicados manuales. La posición se lee
   del elemento de audio al guardar (nunca de `currentTime`, que cambia con `timeupdate`): estado
   completo con debounce de 500 ms, posición cada 5 s reproduciendo y guardado inmediato al pausar,
   cambiar de pista, ocultar la ventana o cerrar. Al hidratar se aplica al `<audio>` en

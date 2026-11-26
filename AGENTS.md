@@ -122,7 +122,7 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
   clave (solo actualizar) → directorio → instalación. `customWelcomePage` inserta la página de
   modo propia de electron-builder en ese punto y define `INSTALL_MODE_PER_ALL_USERS` para que no
   se duplique; `customInstallmode` fija el modo cuando ya se abrió como administrador.
-  Versión `pre-alpha 0.9.11` en `src/lib/version.ts`, `package.json`, `index.html` y el lockfile;
+  Versión `pre-alpha 0.9.12` en `src/lib/version.ts`, `package.json`, `index.html` y el lockfile;
   «Acerca de» muestra las novedades y acredita a Claude y X21. Solo hay una configuración de
   empaquetado (`build` en `package.json`). `.github/workflows/ci.yml` valida cada cambio y
   `.github/workflows/release.yml` publica el instalador y su `.sha256` al etiquetar `vX.Y.Z`.

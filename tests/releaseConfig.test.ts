@@ -7,14 +7,14 @@ function read(relative: string): string {
   return readFileSync(resolve(process.cwd(), relative), 'utf8')
 }
 
-describe('configuración de la versión 0.9.11', () => {
+describe('configuración de la versión 0.9.12', () => {
   it('mantiene la misma versión en todos los archivos', () => {
     const pkg = JSON.parse(read('package.json')) as { version: string }
     const lock = JSON.parse(read('package-lock.json')) as { version: string }
-    expect(pkg.version).toBe('0.9.11')
-    expect(lock.version).toBe('0.9.11')
-    expect(read('src/lib/version.ts')).toContain("'0.9.11'")
-    expect(read('index.html')).toContain('pre-alpha 0.9.11')
+    expect(pkg.version).toBe('0.9.12')
+    expect(lock.version).toBe('0.9.12')
+    expect(read('src/lib/version.ts')).toContain("'0.9.12'")
+    expect(read('index.html')).toContain('pre-alpha 0.9.12')
   })
 
   it('deja una sola configuración de empaquetado', () => {
@@ -36,7 +36,7 @@ describe('configuración de la versión 0.9.11', () => {
 
   it('muestra las novedades y los créditos en «Acerca de»', () => {
     const about = read('src/components/SettingsDialog.tsx')
-    expect(about).toContain('Novedades de 0.9.11')
+    expect(about).toContain('Novedades de 0.9.12')
     expect(about).toContain('Claude y X21')
   })
 })

@@ -450,8 +450,14 @@ export function SettingsDialog({ tab, onTabChange, onClose }: SettingsDialogProp
                 <Check size={13} /> Música en tu carpeta de Users y ajustes legibles
               </li>
             </ul>
-            <h3>Novedades de 0.9.11</h3>
+            <h3>Novedades de 0.9.12</h3>
             <ul className="about__list">
+              <li>
+                <Check size={13} /> La cola se completa con toda la biblioteca al abrir
+              </li>
+              <li>
+                <Check size={13} /> Actualizaciones buscadas solo en los releases de GitHub
+              </li>
               <li>
                 <Check size={13} /> Posición guardada sin depender de `timeupdate` y crossfade real
                 entre dos pistas

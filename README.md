@@ -1,10 +1,10 @@
-# X21 Music — pre-alpha 0.9.11
+# X21 Music — pre-alpha 0.9.12
 
 Reproductor de música **local para Windows** con **Diseño de Islas** y una interfaz cuyo
 color se deriva por completo de la portada de la canción actual. Todo se procesa en el
 dispositivo: metadatos ID3, portadas, forma de onda, biblioteca y paleta. Sin backend.
 
-**Versión actual: pre-alpha 0.9.11** (también visible en «Acerca de» dentro de la app, junto
+**Versión actual: pre-alpha 0.9.12** (también visible en «Acerca de» dentro de la app, junto
 al resumen de novedades). Proyecto creado por **Claude y X21**.
 
 ## Características
@@ -83,7 +83,7 @@ al resumen de novedades). Proyecto creado por **Claude y X21**.
   detiene la reproducción al terminar.
 - **Vista «Canciones»**: vista completa sin reproductor, con canciones, álbum, artista, fecha
   de incorporación y duración; filtros «Recién agregadas/Todas», búsqueda y ordenación.
-- **Acerca de**: versión `pre-alpha 0.9.11`, resumen de características y novedades de esta
+- **Acerca de**: versión `pre-alpha 0.9.12`, resumen de características y novedades de esta
   versión, con créditos a Claude y X21.
 - **Accesibilidad**: contraste verificado, foco visible, `prefers-reduced-motion` y
   `prefers-reduced-transparency`.
@@ -134,7 +134,7 @@ npm run build          # tsc -b && vite build
 npm run dist:win
 ```
 
-Crea `release/X21 Music Setup 0.9.11.exe` (instalador NSIS x64, con acceso directo en
+Crea `release/X21 Music Setup 0.9.12.exe` (instalador NSIS x64, con acceso directo en
 escritorio y menú de inicio). Cierra el reproductor antes de empaquetar o instalar para
 evitar que Windows bloquee el archivo. Para desarrollo rápido, `npm run electron` abre la
 ventana Electron usando el `dist` ya compilado. La única configuración de empaquetado es el

@@ -25,12 +25,10 @@ import {
   resolveImportIdentity,
 } from '../lib/fingerprint'
 import { computeWaveform, readAudioMetadata } from '../lib/metadata'
-import { DEFAULT_ISLAND_LAYOUT, normalizeIslandLayout } from '../lib/islandLayout'
 import { computeProgress, type PlayerTime } from '../lib/playerTime'
 import { reconcileQueue } from '../lib/queue'
 import {
   clampPersistedTime,
-  clampPersistedVolume,
   serializePersistedState,
   shouldPersist,
   type PersistedSnapshot,
@@ -46,6 +44,7 @@ import {
   trashMusicFiles,
 } from '../lib/musicFolder'
 import { extractPaletteFromBlob } from '../lib/palette'
+import { clampVolume, DEFAULT_SETTINGS, normalizeSettings } from './player/settings'
 import type { PlaybackSettings, RepeatMode, StoredTrack, Track } from '../types'
 
 export interface PlayerContextValue {
@@ -94,35 +93,6 @@ const PlayerContext = createContext<PlayerContextValue | null>(null)
 export const PlayerTimeContext = createContext<PlayerTime | null>(null)
 
 const GAP_MS = 400
-
-const DEFAULT_SETTINGS: PlaybackSettings = {
-  crossfadeSeconds: 0,
-  skipSilence: true,
-  preventDuplicates: true,
-  moveOriginals: false,
-  monoDark: false,
-  marqueeTitles: false,
-  islandLayout: DEFAULT_ISLAND_LAYOUT,
-  playbackBarStyle: 'simple',
-  lowPerformance: false,
-}
-
-const clampVolume = clampPersistedVolume
-
-function normalizeSettings(value?: Partial<PlaybackSettings>): PlaybackSettings {
-  const seconds = Number(value?.crossfadeSeconds ?? 0)
-  return {
-    crossfadeSeconds: Number.isFinite(seconds) ? Math.min(8, Math.max(0, seconds)) : 0,
-    skipSilence: value?.skipSilence ?? DEFAULT_SETTINGS.skipSilence,
-    preventDuplicates: value?.preventDuplicates ?? DEFAULT_SETTINGS.preventDuplicates,
-    moveOriginals: value?.moveOriginals ?? DEFAULT_SETTINGS.moveOriginals,
-    monoDark: value?.monoDark ?? DEFAULT_SETTINGS.monoDark,
-    marqueeTitles: value?.marqueeTitles ?? DEFAULT_SETTINGS.marqueeTitles,
-    islandLayout: normalizeIslandLayout(value?.islandLayout),
-    playbackBarStyle: value?.playbackBarStyle === 'clasico' ? 'clasico' : 'simple',
-    lowPerformance: value?.lowPerformance ?? DEFAULT_SETTINGS.lowPerformance,
-  }
-}
 
 export function PlaybackProvider({ children }: { children: ReactNode }) {
   const [tracks, setTracks] = useState<Track[]>([])

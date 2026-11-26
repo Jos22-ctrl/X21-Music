@@ -831,16 +831,16 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
           if (resolution.status === 'collision') identityCollision = true
           const id = resolution.id
 
-          // Copia en memoria antes de tocar el disco: el <input> lee del archivo original.
+          // Una sola lectura: los bytes se reutilizan para la forma de onda.
           const sourcePath = sourcePathOf(file)
           let stableFile = file
-          if (sourcePath) {
-            try {
-              const bytes = await file.arrayBuffer()
-              stableFile = new File([bytes], file.name, { type: file.type || 'audio/mpeg' })
-            } catch {
-              stableFile = file
-            }
+          let bytes: ArrayBuffer | null = null
+          try {
+            bytes = await file.arrayBuffer()
+            stableFile = new File([bytes], file.name, { type: file.type || 'audio/mpeg' })
+          } catch {
+            bytes = null
+            stableFile = file
           }
 
           const metadata = await readAudioMetadata(stableFile)
@@ -851,7 +851,10 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
             continue
           }
 
-          const waveform = await computeWaveform(stableFile)
+          const waveform = await computeWaveform(stableFile, {
+            bytes,
+            durationMs: metadata.durationMs,
+          })
           const paletteForTrack = await extractPaletteFromBlob(metadata.coverBlob)
 
           let filePath: string | null = null

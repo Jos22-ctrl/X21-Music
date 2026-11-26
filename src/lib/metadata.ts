@@ -1,5 +1,6 @@
 import { parseBlob } from 'music-metadata'
 import { cleanFileName } from './format'
+import { shouldDecodeWaveform } from './waveform'
 
 export interface AudioMetadata {
   title: string
@@ -56,8 +57,17 @@ export function fallbackWaveform(seed: string, buckets = 80): number[] {
   })
 }
 
-/** Picos RMS reales decodificados localmente; si falla, barras deterministas. */
-export async function computeWaveform(file: File, buckets = 80): Promise<number[]> {
+export interface WaveformOptions {
+  buckets?: number
+  /** Bytes ya leídos durante la importación; evita leer el archivo dos veces. */
+  bytes?: ArrayBuffer | null
+  durationMs?: number
+}
+
+/** Picos RMS reales solo bajo un umbral; si no, barras deterministas. */
+export async function computeWaveform(file: File, options: WaveformOptions = {}): Promise<number[]> {
+  const { buckets = 80, bytes = null, durationMs = 0 } = options
+  if (!shouldDecodeWaveform(file.size, durationMs)) return fallbackWaveform(file.name, buckets)
   try {
     const ctor =
       window.AudioContext ??
@@ -66,7 +76,7 @@ export async function computeWaveform(file: File, buckets = 80): Promise<number[
 
     const context = new ctor()
     try {
-      const buffer = await context.decodeAudioData(await file.arrayBuffer())
+      const buffer = await context.decodeAudioData(bytes ?? (await file.arrayBuffer()))
       const data = buffer.getChannelData(0)
       const size = Math.max(1, Math.floor(data.length / buckets))
       const peaks: number[] = []

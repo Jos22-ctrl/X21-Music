@@ -38,6 +38,9 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
 - `currentTime`, `duration` y `progress` viven en `PlayerTimeContext` (`usePlayerTime()`), separado
   del contexto del reproductor: `timeupdate` solo repinta la barra de onda y el anillo de progreso.
   `src/lib/playerTime.ts` calcula el progreso sin dependencias de React.
+- La forma de onda real se decodifica solo si el archivo pesa ≤ 40 MB y dura ≤ 12 min
+  (`src/lib/waveform.ts`); en caso contrario se usa `fallbackWaveform`. Los bytes se leen una sola
+  vez durante la importación y se pasan a `computeWaveform`.
 - Metadatos y portadas se leen del archivo. La identidad usa SHA-256 (nombre, tamaño, fecha,
   primeros y últimos 64 KB; `src/lib/fingerprint.ts`), con 32 hex como ID y el hash completo en
   `contentHash`. El ID FNV-1a antiguo se reconoce como duplicado; si el ID nuevo colisiona con

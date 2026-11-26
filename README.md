@@ -70,7 +70,9 @@ dispositivo: metadatos ID3, portadas, forma de onda, biblioteca y paleta. Sin ba
   reproducción (Simple/Clásico), modo oscuro monocromo de un solo color y desplazamiento
   opcional de títulos largos (por defecto se cortan en una línea). Se guardan en IndexedDB.
 - **Interfaz eficiente**: el tiempo de reproducción se publica en un contexto aparte, de modo que
-  los eventos `timeupdate` no repintan la biblioteca, las islas ni el panel de ajustes.
+  los eventos `timeupdate` no repintan la biblioteca, las islas ni el panel de ajustes. La forma de
+  onda real solo se decodifica en archivos de hasta 40 MB y 12 minutos; los demás usan una barra
+  determinista, sin bloquear la importación.
 - **Estado que sobrevive al cierre**: volumen, cola, pista, ajustes y posición se guardan en
   IndexedDB sin depender de los eventos de tiempo; la posición se actualiza cada 5 s mientras suena
   y se fuerza al pausar, cambiar de canción o cerrar. Al abrir, la canción continúa donde estaba.

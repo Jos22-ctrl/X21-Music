@@ -17,8 +17,9 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
   `C:\Users\<usuario>\X21 Music\Música`, e IPC `update:*` gestiona las actualizaciones.
   `electron/update.cjs` compara versiones y valida `update.json`. `dist:win` genera el
   instalador NSIS.
-- `src/lib/musicFolder.ts`: puente renderer→main para mover/guardar archivos en esa carpeta
-  (`webUtils.getPathForFile` en el preload; `fs.rename` con fallback a copia en el main).
+- `src/lib/musicFolder.ts`: puente renderer→main para copiar/mover/guardar/borrar archivos en esa
+  carpeta (`webUtils.getPathForFile` en el preload; `fs.copyFile` por defecto y `fs.rename` solo
+  en modo explícito; `shell.trashItem` al eliminar).
 
 ## 2. Reglas de reproducción
 
@@ -47,8 +48,13 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
   `lowPerformance` (false por defecto: sin desenfoques/animaciones, forma de onda reducida y
   biblioteca paginada).
 - Al importar se toma una copia en memoria del `File`, se leen metadatos/forma de onda y se
-  mueve el original a la carpeta de música de Users; `StoredTrack.filePath` guarda la ruta.
-  «Copiar biblioteca» exporta los blobs ya guardados a esa misma carpeta.
+  **copia** el archivo a la carpeta de música de Users; el original se conserva. Solo con
+  `moveOriginals` (false por defecto) se mueve; al eliminar esa canción se envía a la papelera.
+  `StoredTrack.filePath` guarda la ruta. `electron/paths.cjs` valida orígenes absolutos de audio,
+  nombres Windows seguros (`path.win32.basename`) y que el borrado afecte solo a la carpeta de
+  música; el tamaño se limita a 2 GB. `src/lib/filePaths.ts` hace la validación equivalente en el
+  renderer y calcula el espacio aproximado que se muestra en Ajustes. «Copiar biblioteca» exporta
+  los blobs ya guardados a esa misma carpeta.
 - Temporizador de apagado: cuenta atrás en vivo y pausa automática al expirar.
 
 ## 3. Sistema visual

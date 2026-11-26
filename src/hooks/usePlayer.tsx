@@ -35,11 +35,13 @@ import {
 } from '../lib/persistence'
 import {
   baseName,
+  copyFilesToMusicFolder,
   getMusicFolder,
   moveFilesToMusicFolder,
   openMusicFolder,
   saveFileToMusicFolder,
   sourcePathOf,
+  trashMusicFiles,
 } from '../lib/musicFolder'
 import { extractPaletteFromBlob } from '../lib/palette'
 import type { PlaybackSettings, RepeatMode, StoredTrack, Track } from '../types'
@@ -96,6 +98,7 @@ const DEFAULT_SETTINGS: PlaybackSettings = {
   crossfadeSeconds: 0,
   skipSilence: true,
   preventDuplicates: true,
+  moveOriginals: false,
   monoDark: false,
   marqueeTitles: false,
   islandLayout: DEFAULT_ISLAND_LAYOUT,
@@ -111,6 +114,7 @@ function normalizeSettings(value?: Partial<PlaybackSettings>): PlaybackSettings 
     crossfadeSeconds: Number.isFinite(seconds) ? Math.min(8, Math.max(0, seconds)) : 0,
     skipSilence: value?.skipSilence ?? DEFAULT_SETTINGS.skipSilence,
     preventDuplicates: value?.preventDuplicates ?? DEFAULT_SETTINGS.preventDuplicates,
+    moveOriginals: value?.moveOriginals ?? DEFAULT_SETTINGS.moveOriginals,
     monoDark: value?.monoDark ?? DEFAULT_SETTINGS.monoDark,
     marqueeTitles: value?.marqueeTitles ?? DEFAULT_SETTINGS.marqueeTitles,
     islandLayout: normalizeIslandLayout(value?.islandLayout),
@@ -214,6 +218,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       palette: record.palette,
       waveform: record.waveform,
       addedAt: record.addedAt,
+      fileSize: record.fileBlob?.size ?? 0,
       audioUrl,
       coverUrl,
     }
@@ -806,6 +811,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       const collected = [...latestRef.current.tracks]
       const importedIds: string[] = []
       const preferUnique = settingsRef.current.preventDuplicates
+      const shouldMove = settingsRef.current.moveOriginals
       const metaKey = (title: string, artist: string, album: string): string =>
         `${title}|${artist}|${album}`.trim().toLowerCase()
       let moveFailed = false
@@ -825,7 +831,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
           if (resolution.status === 'collision') identityCollision = true
           const id = resolution.id
 
-          // Copia en memoria antes de mover el original: el <input> lee del disco.
+          // Copia en memoria antes de tocar el disco: el <input> lee del archivo original.
           const sourcePath = sourcePathOf(file)
           let stableFile = file
           if (sourcePath) {
@@ -851,7 +857,9 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
           let filePath: string | null = null
           let fileName = stableFile.name
           if (sourcePath) {
-            const [destination] = await moveFilesToMusicFolder([sourcePath])
+            const [destination] = shouldMove
+              ? await moveFilesToMusicFolder([sourcePath])
+              : await copyFilesToMusicFolder([sourcePath])
             if (destination) {
               filePath = destination
               fileName = baseName(destination)
@@ -886,7 +894,9 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
         const issues: string[] = []
         if (moveFailed) {
           issues.push(
-            'Las canciones se importaron, pero algunas no se pudieron mover a la carpeta de música.',
+            shouldMove
+              ? 'Las canciones se importaron, pero algunas no se pudieron mover a la carpeta de música.'
+              : 'Las canciones se importaron, pero algunas no se pudieron copiar a la carpeta de música.',
           )
         }
         if (identityCollision) {
@@ -914,6 +924,10 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     const removed = latestRef.current.tracks.find((track) => track.id === id)
     const remaining = latestRef.current.tracks.filter((track) => track.id !== id)
     await deleteTrack(id)
+    // REQUIERE PRUEBA MANUAL EN WINDOWS: confirmar que la papelera recibe el archivo.
+    if (settingsRef.current.moveOriginals && removed?.filePath) {
+      await trashMusicFiles([removed.filePath])
+    }
     setTracks(remaining)
     setQueueIds((previous) => previous.filter((queued) => queued !== id))
     if (latestRef.current.currentId === id) {

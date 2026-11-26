@@ -19,8 +19,10 @@ declare global {
     platform: string
     getPathForFile: (file: File) => string | null
     getMusicFolder: () => Promise<string | null>
+    copyMusicFiles: (paths: string[]) => Promise<string[]>
     moveMusicFiles: (paths: string[]) => Promise<string[]>
     saveMusicFile: (fileName: string, data: ArrayBuffer) => Promise<string | null>
+    trashMusicFiles: (paths: string[]) => Promise<string[]>
     openMusicFolder: () => Promise<void>
     checkForUpdates: () => Promise<UpdateInfo>
     installUpdate: (key: string) => Promise<{ installerPath: string }>

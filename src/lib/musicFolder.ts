@@ -1,11 +1,12 @@
 /** Puente local con el proceso Electron para la carpeta de música del usuario. */
+import { isValidImportPath, windowsBaseName } from './filePaths'
 
 function api(): ElectronAPI | undefined {
   return typeof window === 'undefined' ? undefined : window.electronAPI
 }
 
 export function baseName(filePath: string): string {
-  return filePath.split(/[\\/]/).pop() || filePath
+  return windowsBaseName(filePath)
 }
 
 export function sourcePathOf(file: File): string | null {
@@ -28,11 +29,38 @@ export async function getMusicFolder(): Promise<string | null> {
   }
 }
 
+/** Valida antes de cruzar el puente; el main vuelve a comprobar cada ruta. */
+function validPaths(paths: string[]): string[] {
+  return paths.filter((item) => isValidImportPath(item, null))
+}
+
+export async function copyFilesToMusicFolder(paths: string[]): Promise<string[]> {
+  const bridge = api()
+  const valid = validPaths(paths)
+  if (!bridge?.isElectron || !bridge.copyMusicFiles || valid.length === 0) return []
+  try {
+    return (await bridge.copyMusicFiles(valid)).filter((item): item is string => Boolean(item))
+  } catch {
+    return []
+  }
+}
+
 export async function moveFilesToMusicFolder(paths: string[]): Promise<string[]> {
   const bridge = api()
-  if (!bridge?.isElectron || !bridge.moveMusicFiles || paths.length === 0) return []
+  const valid = validPaths(paths)
+  if (!bridge?.isElectron || !bridge.moveMusicFiles || valid.length === 0) return []
   try {
-    return (await bridge.moveMusicFiles(paths)).filter((item): item is string => Boolean(item))
+    return (await bridge.moveMusicFiles(valid)).filter((item): item is string => Boolean(item))
+  } catch {
+    return []
+  }
+}
+
+export async function trashMusicFiles(paths: string[]): Promise<string[]> {
+  const bridge = api()
+  if (!bridge?.isElectron || !bridge.trashMusicFiles || paths.length === 0) return []
+  try {
+    return (await bridge.trashMusicFiles(paths)).filter((item): item is string => Boolean(item))
   } catch {
     return []
   }

@@ -14,8 +14,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   },
   getMusicFolder: () => ipcRenderer.invoke('music:get-folder'),
+  copyMusicFiles: (paths) => ipcRenderer.invoke('music:copy-files', paths),
   moveMusicFiles: (paths) => ipcRenderer.invoke('music:move-files', paths),
   saveMusicFile: (fileName, data) => ipcRenderer.invoke('music:save-file', { fileName, data }),
+  trashMusicFiles: (paths) => ipcRenderer.invoke('music:trash-files', paths),
   openMusicFolder: () => ipcRenderer.invoke('music:open-folder'),
 
   checkForUpdates: () => ipcRenderer.invoke('update:check'),

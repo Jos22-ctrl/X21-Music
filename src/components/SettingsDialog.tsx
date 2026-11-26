@@ -20,6 +20,7 @@ import {
   X,
 } from 'lucide-react'
 import { usePlayer } from '../hooks/usePlayer'
+import { formatApproximateSize } from '../lib/filePaths'
 import { formatTime } from '../lib/format'
 import { DEFAULT_ISLAND_LAYOUT } from '../lib/islandLayout'
 import { APP_LABEL, APP_STAGE, APP_VERSION } from '../lib/version'
@@ -76,6 +77,7 @@ export function SettingsDialog({ tab, onTabChange, onClose }: SettingsDialogProp
   } = usePlayer()
   const [copying, setCopying] = useState(false)
   const [copyMessage, setCopyMessage] = useState('')
+  const approximateBytes = tracks.reduce((total, track) => total + track.fileSize, 0)
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -311,6 +313,20 @@ export function SettingsDialog({ tab, onTabChange, onClose }: SettingsDialogProp
                   label="No permitir canciones repetidas"
                 />
               </div>
+              <div className="setting-row">
+                <div className="setting-row__info">
+                  <strong>Mover archivos originales</strong>
+                  <small>
+                    Por defecto se copian y el original se queda donde estaba. Si lo activas, el
+                    original se mueve y al borrar la canción va a la papelera.
+                  </small>
+                </div>
+                <Toggle
+                  checked={settings.moveOriginals}
+                  onChange={(value) => updateSettings({ moveOriginals: value })}
+                  label="Mover archivos originales"
+                />
+              </div>
               <div className="setting-block music-folder">
                 <div className="setting-row__info">
                   <strong>
@@ -320,8 +336,9 @@ export function SettingsDialog({ tab, onTabChange, onClose }: SettingsDialogProp
                     {musicFolder ?? 'C:\\Users\\<usuario>\\X21 Music\\Música'}
                   </small>
                   <small>
-                    Al añadir canciones, los archivos se mueven a esa carpeta. Las portadas y los
-                    datos siguen guardados en el equipo.
+                    Al añadir canciones se copian a esa carpeta (o se mueven si activas la opción
+                    anterior). Espacio aproximado de la biblioteca:{' '}
+                    {formatApproximateSize(approximateBytes)}.
                   </small>
                 </div>
                 <div className="music-folder__actions">

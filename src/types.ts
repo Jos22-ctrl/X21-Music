@@ -22,6 +22,8 @@ export interface StoredTrack {
 }
 
 export interface Track extends Omit<StoredTrack, 'fileBlob' | 'coverBlob'> {
+  /** Tamaño del blob en memoria; se usa solo para estimar el espacio de la carpeta. */
+  fileSize: number
   audioUrl: string
   coverUrl: string | null
 }
@@ -39,6 +41,8 @@ export interface PlaybackSettings {
   skipSilence: boolean
   /** Evita añadir dos veces la misma canción (biblioteca y cola). */
   preventDuplicates: boolean
+  /** Por defecto se copia; activarlo mueve el original y envía a papelera al eliminar. */
+  moveOriginals: boolean
   /** Tema oscuro monocromo: un solo color, sin paleta de la portada. */
   monoDark: boolean
   /** Desplaza los títulos largos; si es false se cortan en una línea con elipsis. */

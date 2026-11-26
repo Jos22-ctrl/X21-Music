@@ -4,6 +4,12 @@ const crypto = require('node:crypto')
 const fs = require('node:fs/promises')
 const path = require('node:path')
 const { normalizeUpdateInfo } = require('./update.cjs')
+const {
+  safeFileName,
+  isWithinDirectory,
+  isValidImportSource,
+  MAX_IMPORT_BYTES,
+} = require('./paths.cjs')
 
 const DEV_URL = process.env.X21_DEV_URL || 'http://localhost:5173'
 const GITHUB_REPO = 'Jos22-ctrl/X21-Music'
@@ -31,7 +37,7 @@ async function ensureMusicDir() {
 
 /** Evita sobrescribir canciones con el mismo nombre. */
 async function uniqueDestination(directory, fileName) {
-  const safe = path.basename(String(fileName || 'cancion.mp3'))
+  const safe = safeFileName(fileName)
   const extension = path.extname(safe)
   const base = path.basename(safe, extension) || 'cancion'
   let candidate = path.join(directory, `${base}${extension}`)
@@ -46,22 +52,40 @@ async function uniqueDestination(directory, fileName) {
   }
 }
 
+/** Valida el origen antes de cualquier operación y limita el tamaño del archivo. */
+async function validateImportSource(source, dir) {
+  if (!isValidImportSource(source, dir)) throw new Error('Ruta de archivo no válida.')
+  const origin = path.resolve(String(source))
+  const stats = await fs.stat(origin)
+  if (!stats.isFile() || stats.size > MAX_IMPORT_BYTES) {
+    throw new Error('El archivo no es válido o es demasiado grande.')
+  }
+  return origin
+}
+
+/** Comportamiento por defecto: copiar, nunca tocar el original. */
+async function copyToMusicDir(source) {
+  const dir = await ensureMusicDir()
+  const origin = await validateImportSource(source, dir)
+  if (isWithinDirectory(dir, origin)) return origin
+  const destination = await uniqueDestination(dir, path.basename(origin))
+  await fs.copyFile(origin, destination)
+  return destination
+}
+
+/** Solo cuando el usuario activa explícitamente «mover originales». */
 async function moveToMusicDir(source) {
   const dir = await ensureMusicDir()
-  const origin = path.resolve(String(source))
-  if (path.dirname(origin) === path.resolve(dir)) return origin
+  const origin = await validateImportSource(source, dir)
+  if (isWithinDirectory(dir, origin)) return origin
 
   const destination = await uniqueDestination(dir, path.basename(origin))
   try {
     await fs.rename(origin, destination)
   } catch (error) {
-    if (error && error.code === 'EXDEV') {
-      await fs.copyFile(origin, destination)
-      await fs.unlink(origin)
-    } else {
-      // Si el archivo está bloqueado, al menos queda una copia en la carpeta.
-      await fs.copyFile(origin, destination)
-    }
+    // En otra unidad (EXDEV) o con el archivo bloqueado se copia primero.
+    await fs.copyFile(origin, destination)
+    if (error && error.code === 'EXDEV') await fs.unlink(origin)
   }
   return destination
 }
@@ -87,6 +111,18 @@ function makeUpdateKey() {
 
 ipcMain.handle('music:get-folder', async () => ensureMusicDir())
 
+ipcMain.handle('music:copy-files', async (_event, paths) => {
+  const copied = []
+  for (const source of Array.isArray(paths) ? paths : []) {
+    try {
+      copied.push(await copyToMusicDir(source))
+    } catch {
+      // Un archivo que ya no existe no impide importar los demás.
+    }
+  }
+  return copied
+})
+
 ipcMain.handle('music:move-files', async (_event, paths) => {
   const moved = []
   for (const source of Array.isArray(paths) ? paths : []) {
@@ -101,9 +137,29 @@ ipcMain.handle('music:move-files', async (_event, paths) => {
 
 ipcMain.handle('music:save-file', async (_event, payload) => {
   const dir = await ensureMusicDir()
+  const data = payload?.data
+  if (!(data instanceof ArrayBuffer) || data.byteLength > MAX_IMPORT_BYTES) {
+    throw new Error('Archivo no válido o demasiado grande.')
+  }
   const destination = await uniqueDestination(dir, payload?.fileName)
-  await fs.writeFile(destination, Buffer.from(payload?.data ?? new ArrayBuffer(0)))
+  await fs.writeFile(destination, Buffer.from(data))
   return destination
+})
+
+ipcMain.handle('music:trash-files', async (_event, paths) => {
+  const dir = await ensureMusicDir()
+  const trashed = []
+  for (const candidate of Array.isArray(paths) ? paths : []) {
+    // REQUIERE PRUEBA MANUAL EN WINDOWS: comprobar la papelera en el Explorador.
+    if (!isWithinDirectory(dir, String(candidate ?? ''))) continue
+    try {
+      await shell.trashItem(path.resolve(String(candidate)))
+      trashed.push(String(candidate))
+    } catch {
+      // Si la papelera falla, el archivo se conserva.
+    }
+  }
+  return trashed
 })
 
 ipcMain.handle('music:open-folder', async () => {

@@ -54,9 +54,12 @@ dispositivo: metadatos ID3, portadas, forma de onda, biblioteca y paleta. Sin ba
   zona; las islas intercambian ranuras fijas, sin solapes, y el layout se guarda en IndexedDB.
   Funciona en ambos diseños; en Ajustes → «Disposición de las islas» puedes volver al orden
   original.
-- **Carpeta de música en Users**: al importar, los archivos se mueven a
-  `C:\Users\<usuario>\X21 Music\Música` (se crea sola). La carpeta se abre desde Ajustes y
-  «Copiar biblioteca» vuelca allí las canciones que ya estaban en IndexedDB. Los metadatos,
+- **Carpeta de música en Users**: al importar, los archivos se **copian** a
+  `C:\Users\<usuario>\X21 Music\Música` (se crea sola); el original no se toca. La opción
+  «Mover archivos originales» lo cambia y, al borrar la canción, envía el archivo a la papelera.
+  Las rutas se validan (absolutas, de audio, dentro de la carpeta solo para borrar) y el tamaño
+  se limita a 2 GB. La carpeta se abre desde Ajustes, donde se muestra el espacio aproximado,
+  y «Copiar biblioteca» vuelca allí las canciones que ya estaban en IndexedDB. Los metadatos,
   portadas y la paleta siguen guardados localmente en IndexedDB.
 - **Ajustes persistentes y legibles**: panel dividido en Sonido, Apariencia, Biblioteca y
   Apagado, con el estado «Activado/Desactivado» visible en cada interruptor, texto más grande

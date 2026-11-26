@@ -19,7 +19,12 @@ describe('configuración de la versión 0.9.12', () => {
 
   it('deja una sola configuración de empaquetado', () => {
     expect(existsSync(resolve(process.cwd(), 'electron-builder.final.yml'))).toBe(false)
-    expect(read('package.json')).toContain('"build": {')
+    expect(read('package.json')).not.toContain('"build": {')
+    const config = read('electron-builder.yml')
+    expect(config).toContain('appId: com.x21.music')
+    expect(config).toContain('output: release')
+    expect(config).toContain('icon: build/icon.png')
+    expect(config).toContain('include: build/installer.nsh')
   })
 
   it('incluye los dos workflows de CI y release', () => {

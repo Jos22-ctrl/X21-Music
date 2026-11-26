@@ -1,4 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
+import { DEFAULT_PERSISTED_SNAPSHOT } from './persistence'
 import type { PersistedSettings, StoredTrack } from '../types'
 
 interface X21Schema extends DBSchema {
@@ -84,4 +85,12 @@ export async function saveSettings(
   } catch {
     // Ignorado: las preferencias se conservan en memoria durante la sesión.
   }
+}
+
+/** Actualiza solo la posición sin sobrescribir el resto del estado guardado. */
+export async function savePlaybackPosition(currentTime: number): Promise<void> {
+  const stored = await loadSettings()
+  if (!stored) return
+  const { key: _key, ...rest } = stored
+  await saveSettings({ ...DEFAULT_PERSISTED_SNAPSHOT, ...rest, currentTime })
 }

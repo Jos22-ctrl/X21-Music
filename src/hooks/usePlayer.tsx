@@ -9,10 +9,24 @@ import {
 } from 'react'
 import type { ReactNode } from 'react'
 import { DEFAULT_PALETTE, type Palette } from '../lib/color'
-import { deleteTrack, loadSettings, loadTracks, saveSettings, saveTrack } from '../lib/db'
+import {
+  deleteTrack,
+  loadSettings,
+  loadTracks,
+  savePlaybackPosition,
+  saveSettings,
+  saveTrack,
+} from '../lib/db'
 import { fingerprint, isAudioFile } from '../lib/fingerprint'
 import { computeWaveform, readAudioMetadata } from '../lib/metadata'
 import { DEFAULT_ISLAND_LAYOUT, normalizeIslandLayout } from '../lib/islandLayout'
+import {
+  clampPersistedTime,
+  clampPersistedVolume,
+  serializePersistedState,
+  shouldPersist,
+  type PersistedSnapshot,
+} from '../lib/persistence'
 import {
   baseName,
   getMusicFolder,
@@ -22,13 +36,7 @@ import {
   sourcePathOf,
 } from '../lib/musicFolder'
 import { extractPaletteFromBlob } from '../lib/palette'
-import type {
-  PersistedSettings,
-  PlaybackSettings,
-  RepeatMode,
-  StoredTrack,
-  Track,
-} from '../types'
+import type { PlaybackSettings, RepeatMode, StoredTrack, Track } from '../types'
 
 export interface PlayerContextValue {
   tracks: Track[]
@@ -89,8 +97,7 @@ const DEFAULT_SETTINGS: PlaybackSettings = {
   lowPerformance: false,
 }
 
-const clampVolume = (value: number): number =>
-  Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0.8))
+const clampVolume = clampPersistedVolume
 
 function normalizeSettings(value?: Partial<PlaybackSettings>): PlaybackSettings {
   const seconds = Number(value?.crossfadeSeconds ?? 0)
@@ -144,9 +151,34 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const fadingRef = useRef(false)
   const fadeInRef = useRef(0)
   const pendingRef = useRef<number | null>(null)
+  const positionRef = useRef(0)
+  const restoredTimeRef = useRef<number | null>(null)
+  const hydratedRef = useRef(false)
+  const persistStateRef = useRef<PersistedSnapshot>({
+    volume,
+    isMuted,
+    repeatMode,
+    isShuffle,
+    queueIds,
+    currentTrackId: currentId,
+    currentTime: 0,
+    preferences: settings,
+  })
+  const lastPersistedRef = useRef<PersistedSnapshot | null>(null)
 
   settingsRef.current = settings
   latestRef.current = { tracks, currentId, queueIds, repeatMode, isShuffle, isPlaying }
+  hydratedRef.current = isHydrated
+  persistStateRef.current = {
+    volume,
+    isMuted,
+    repeatMode,
+    isShuffle,
+    queueIds,
+    currentTrackId: currentId,
+    currentTime: positionRef.current,
+    preferences: settings,
+  }
 
   const makeView = useCallback((record: StoredTrack): Track => {
     const audioUrl = URL.createObjectURL(record.fileBlob)
@@ -189,6 +221,32 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     pendingRef.current = null
   }, [])
 
+  /** Lee la posición real del audio en el instante del guardado. */
+  const readPosition = useCallback((): number => {
+    const value = audioRef.current?.currentTime ?? positionRef.current
+    return clampPersistedTime(value)
+  }, [])
+
+  const persistSnapshot = useCallback(
+    (overrides: Partial<PersistedSnapshot> = {}): PersistedSnapshot =>
+      serializePersistedState({
+        ...persistStateRef.current,
+        currentTime: restoredTimeRef.current ?? readPosition(),
+        ...overrides,
+      }),
+    [readPosition],
+  )
+
+  const saveNow = useCallback(
+    (overrides: Partial<PersistedSnapshot> = {}): void => {
+      if (!hydratedRef.current) return
+      const data = persistSnapshot(overrides)
+      lastPersistedRef.current = data
+      void saveSettings(data)
+    },
+    [persistSnapshot],
+  )
+
   /** Fundido lineal del volumen actual; se usa para la transición gradual. */
   const fadeTo = useCallback(
     (to: number, ms: number, done?: () => void, liveTarget = false): void => {
@@ -230,6 +288,9 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
 
       const commit = (): void => {
         fadeInRef.current = prefs.crossfadeSeconds > 0 && shouldPlay ? prefs.crossfadeSeconds * 500 : 0
+        restoredTimeRef.current = null
+        positionRef.current = 0
+        saveNow({ currentTrackId: id, currentTime: 0 })
         setCurrentId(id)
         setCurrentTime(0)
         if (shouldPlay) setIsPlaying(true)
@@ -252,7 +313,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       }
       fadeTo(0, prefs.crossfadeSeconds * 500, () => withGap(commit))
     },
-    [clearFade, clearPending, fadeTo],
+    [clearFade, clearPending, fadeTo, saveNow],
   )
 
   // --- Motor de audio -----------------------------------------------------
@@ -262,11 +323,27 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     audioRef.current = audio
     audio.volume = targetVolumeRef.current
 
-    const onTime = (): void => setCurrentTime(audio.currentTime)
-    const onMeta = (): void =>
-      setDuration(Number.isFinite(audio.duration) ? audio.duration : 0)
+    const onTime = (): void => {
+      positionRef.current = clampPersistedTime(audio.currentTime)
+      setCurrentTime(positionRef.current)
+    }
+    const onMeta = (): void => {
+      const meta = Number.isFinite(audio.duration) ? audio.duration : 0
+      setDuration(meta)
+      const pending = restoredTimeRef.current
+      if (pending !== null && audio.currentTime < 0.25) {
+        const target = Math.min(pending, meta || pending)
+        audio.currentTime = target
+        positionRef.current = target
+        restoredTimeRef.current = null
+        setCurrentTime(target)
+      }
+    }
     const onPlay = (): void => setIsPlaying(true)
-    const onPause = (): void => setIsPlaying(false)
+    const onPause = (): void => {
+      setIsPlaying(false)
+      saveNow()
+    }
     const onEnded = (): void => advanceRef.current()
 
     audio.addEventListener('timeupdate', onTime)
@@ -291,7 +368,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       urlsRef.current.forEach((url) => URL.revokeObjectURL(url))
       urlsRef.current = []
     }
-  }, [clearFade, clearPending])
+  }, [clearFade, clearPending, saveNow])
 
   // --- Hidratación desde IndexedDB ----------------------------------------
   useEffect(() => {
@@ -318,7 +395,9 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
           ? storedSettings.currentTrackId
           : (validQueue[0] ?? null),
       )
-      setCurrentTime(storedSettings?.currentTime ?? 0)
+      restoredTimeRef.current = clampPersistedTime(storedSettings?.currentTime)
+      setCurrentTime(restoredTimeRef.current)
+      positionRef.current = restoredTimeRef.current
       setIsHydrated(true)
     })()
     return () => {
@@ -345,7 +424,8 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
 
   const pause = useCallback((): void => {
     audioRef.current?.pause()
-  }, [])
+    saveNow()
+  }, [saveNow])
 
   const togglePlay = useCallback((): void => {
     if (audioRef.current?.paused) play()
@@ -358,6 +438,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     const max = Number.isFinite(audio.duration) ? audio.duration : time
     const next = Math.min(Math.max(time, 0), Math.max(0, max))
     audio.currentTime = next
+    positionRef.current = next
     setCurrentTime(next)
   }, [])
 
@@ -492,33 +573,51 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   }, [pause, sleepEndsAt])
 
   // --- Persistencia --------------------------------------------------------
+  // El estado completo se guarda con debounce; currentTime NO entra en las dependencias.
   useEffect(() => {
     if (!isHydrated) return
-    const timer = window.setTimeout(() => {
-      const data: Omit<PersistedSettings, 'key'> = {
-        volume,
-        isMuted,
-        repeatMode,
-        isShuffle,
-        queueIds,
-        currentTrackId: currentId,
-        currentTime,
-        preferences: settings,
-      }
-      void saveSettings(data)
-    }, 500)
+    const next = persistSnapshot()
+    if (lastPersistedRef.current && !shouldPersist(lastPersistedRef.current, next)) return
+    const timer = window.setTimeout(() => saveNow(), 500)
     return () => window.clearTimeout(timer)
   }, [
     currentId,
-    currentTime,
     isHydrated,
     isMuted,
     isShuffle,
+    persistSnapshot,
     queueIds,
     repeatMode,
+    saveNow,
     settings,
     volume,
   ])
+
+  // Mientras suena, solo se actualiza la posición cada 5 s.
+  useEffect(() => {
+    if (!isHydrated || !isPlaying) return
+    const timer = window.setInterval(() => {
+      void savePlaybackPosition(readPosition())
+    }, 5000)
+    return () => window.clearInterval(timer)
+  }, [isHydrated, isPlaying, readPosition])
+
+  useEffect(() => {
+    if (!isHydrated) return
+    // REQUIERE PRUEBA MANUAL EN WINDOWS: el cierre real puede cancelar escrituras de IndexedDB.
+    const flush = (): void => saveNow()
+    const onVisibility = (): void => {
+      if (document.visibilityState === 'hidden') flush()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pagehide', flush)
+    window.addEventListener('beforeunload', flush)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', flush)
+      window.removeEventListener('beforeunload', flush)
+    }
+  }, [isHydrated, saveNow])
 
   // --- Controles multimedia del sistema -----------------------------------
   useEffect(() => {

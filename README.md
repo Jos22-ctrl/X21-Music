@@ -62,6 +62,9 @@ dispositivo: metadatos ID3, portadas, forma de onda, biblioteca y paleta. Sin ba
   silencio entre canciones, bloqueo de duplicados al importar/añadir a la cola, diseño de
   reproducción (Simple/Clásico), modo oscuro monocromo de un solo color y desplazamiento
   opcional de títulos largos (por defecto se cortan en una línea). Se guardan en IndexedDB.
+- **Estado que sobrevive al cierre**: volumen, cola, pista, ajustes y posición se guardan en
+  IndexedDB sin depender de los eventos de tiempo; la posición se actualiza cada 5 s mientras suena
+  y se fuerza al pausar, cambiar de canción o cerrar. Al abrir, la canción continúa donde estaba.
 - **Temporizador de apagado**: 5, 10, 15, 30, 45 o 60 minutos; muestra la cuenta atrás y
   detiene la reproducción al terminar.
 - **Vista «Canciones»**: vista completa sin reproductor, con canciones, álbum, artista, fecha

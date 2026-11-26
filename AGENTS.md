@@ -21,7 +21,12 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
 ## 2. Reglas de reproducción
 
 - Un solo `<audio>`; la fuente es un object URL del blob guardado en IndexedDB.
-- Repetición `off | all | one`, aleatorio, historial de cola y `currentTime` persistidos.
+- Repetición `off | all | one`, aleatorio e historial de cola persistidos. La posición se lee
+  del elemento de audio al guardar (nunca de `currentTime`, que cambia con `timeupdate`): estado
+  completo con debounce de 500 ms, posición cada 5 s reproduciendo y guardado inmediato al pausar,
+  cambiar de pista, ocultar la ventana o cerrar. Al hidratar se aplica al `<audio>` en
+  `loadedmetadata`, sin iniciar la reproducción. `src/lib/persistence.ts` contiene el serializador
+  y `shouldPersist`, que excluye la posición del guardado completo.
 - Metadatos y portadas se leen del archivo; deduplicación por huella nombre+tamaño+fecha y,
   si `preventDuplicates` está activo, también por título/artista/álbum.
 - Ajustes persistentes en `preferences`: transición gradual (`crossfadeSeconds`, fundido

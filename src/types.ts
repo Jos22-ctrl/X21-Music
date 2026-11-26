@@ -1,0 +1,61 @@
+import type { Palette } from './lib/color'
+import type { IslandLayout } from './lib/islandLayout'
+
+export interface StoredTrack {
+  id: string
+  title: string
+  artist: string
+  album: string
+  durationMs: number
+  fileName: string
+  /** Ruta de la copia en C:\Users\<usuario>\X21 Music\Música, cuando existe. */
+  filePath?: string | null
+  mimeType: string
+  fileBlob: Blob
+  coverBlob: Blob | null
+  /** Paleta calculada una vez por canción y persistida en el registro. */
+  palette: Palette
+  waveform: number[]
+  addedAt: number
+}
+
+export interface Track extends Omit<StoredTrack, 'fileBlob' | 'coverBlob'> {
+  audioUrl: string
+  coverUrl: string | null
+}
+
+export type RepeatMode = 'off' | 'one' | 'all'
+
+/** Diseño de la barra de controles: simple por defecto o la versión anterior. */
+export type PlaybackBarStyle = 'simple' | 'clasico'
+
+/** Preferencias avanzadas del reproductor (persistidas en IndexedDB). */
+export interface PlaybackSettings {
+  /** Segundos de fundido entre pistas; 0 = cambio instantáneo. */
+  crossfadeSeconds: number
+  /** Empieza la pista siguiente sin pausa ni silencio intermedio. */
+  skipSilence: boolean
+  /** Evita añadir dos veces la misma canción (biblioteca y cola). */
+  preventDuplicates: boolean
+  /** Tema oscuro monocromo: un solo color, sin paleta de la portada. */
+  monoDark: boolean
+  /** Desplaza los títulos largos; si es false se cortan en una línea con elipsis. */
+  marqueeTitles: boolean
+  /** Isla asignada a cada ranura de la rejilla (se guarda tras arrastrar con Ctrl). */
+  islandLayout: IslandLayout
+  /** Barra simple por defecto; «clasico» recupera la barra de controles anterior. */
+  playbackBarStyle: PlaybackBarStyle
+}
+
+export interface PersistedSettings {
+  key: string
+  volume: number
+  isMuted: boolean
+  repeatMode: RepeatMode
+  isShuffle: boolean
+  queueIds: string[]
+  currentTrackId: string | null
+  currentTime: number
+  /** Opcional para no romper ajustes guardados en versiones anteriores. */
+  preferences?: Partial<PlaybackSettings>
+}

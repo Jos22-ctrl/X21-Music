@@ -45,6 +45,7 @@ import {
 } from '../lib/musicFolder'
 import { extractPaletteFromBlob } from '../lib/palette'
 import { clampVolume, DEFAULT_SETTINGS, normalizeSettings } from './player/settings'
+import { useSleepTimer } from './player/useSleepTimer'
 import type { PlaybackSettings, RepeatMode, StoredTrack, Track } from '../types'
 
 export interface PlayerContextValue {
@@ -107,9 +108,6 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const [isShuffle, setIsShuffle] = useState(false)
   const [settings, setSettings] = useState<PlaybackSettings>(DEFAULT_SETTINGS)
   const [musicFolder, setMusicFolder] = useState<string | null>(null)
-  const [sleepMinutes, setSleepMinutes] = useState<number | null>(null)
-  const [sleepEndsAt, setSleepEndsAt] = useState<number | null>(null)
-  const [sleepRemaining, setSleepRemaining] = useState<number | null>(null)
   const [isImporting, setIsImporting] = useState(false)
   const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(
     null,
@@ -527,6 +525,11 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     saveNow()
   }, [clearPending, finishCrossfade, saveNow])
 
+  const onSleepExpired = useCallback((): void => {
+    pause()
+    setError('Temporizador de apagado: reproducción detenida.')
+  }, [pause])
+
   const togglePlay = useCallback((): void => {
     if (activeAudio()?.paused) play()
     else pause()
@@ -670,23 +673,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   }, [isMuted, volume])
 
   // --- Temporizador de apagado --------------------------------------------
-  useEffect(() => {
-    if (sleepEndsAt === null) return
-    const tick = (): void => {
-      const left = Math.max(0, Math.ceil((sleepEndsAt - Date.now()) / 1000))
-      setSleepRemaining(left)
-      if (left === 0) {
-        pause()
-        setSleepEndsAt(null)
-        setSleepMinutes(null)
-        setSleepRemaining(null)
-        setError('Temporizador de apagado: reproducción detenida.')
-      }
-    }
-    tick()
-    const interval = window.setInterval(tick, 1000)
-    return () => window.clearInterval(interval)
-  }, [pause, sleepEndsAt])
+  const { sleepMinutes, sleepRemaining, setSleepTimer } = useSleepTimer(onSleepExpired)
 
   // --- Persistencia --------------------------------------------------------
   // El estado completo se guarda con debounce; currentTime NO entra en las dependencias.
@@ -973,12 +960,6 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       )
     }
     return saved.size
-  }, [])
-
-  const setSleepTimer = useCallback((minutes: number | null): void => {
-    setSleepMinutes(minutes)
-    setSleepEndsAt(minutes ? Date.now() + minutes * 60_000 : null)
-    setSleepRemaining(minutes ? minutes * 60 : null)
   }, [])
 
   const timeValue = useMemo<PlayerTime>(

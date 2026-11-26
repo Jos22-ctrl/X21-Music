@@ -28,8 +28,13 @@ describe('hojas de estilo partidas', () => {
   })
 
   it('deja los estilos de la aplicación en su propio módulo', () => {
-    expect(read('src/App.css')).toBe(
-      "@import './styles/app-layout.css';\n@import './styles/app-islas.css';\n",
-    )
+    const importaciones = read('src/App.css')
+      .split(/\r?\n/)
+      .map((linea) => linea.trim())
+      .filter(Boolean)
+    expect(importaciones).toEqual([
+      "@import './styles/app-layout.css';",
+      "@import './styles/app-islas.css';",
+    ])
   })
 })

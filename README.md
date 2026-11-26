@@ -126,6 +126,7 @@ npm run dev:electron   # Vite + ventana de Electron
 npm run lint           # tsc --noEmit
 npm test               # vitest run
 npm run build          # tsc -b && vite build
+npm run icons          # iconos PWA derivados de build/icon.png
 ```
 
 ## Generar el ejecutable de Windows
@@ -137,8 +138,8 @@ npm run dist:win
 Crea `release/X21 Music Setup 0.9.12.exe` (instalador NSIS x64, con acceso directo en
 escritorio y menú de inicio). Cierra el reproductor antes de empaquetar o instalar para
 evitar que Windows bloquee el archivo. Para desarrollo rápido, `npm run electron` abre la
-ventana Electron usando el `dist` ya compilado. La única configuración de empaquetado es el
-bloque `build` de `package.json`.
+ventana Electron usando el `dist` ya compilado. La única configuración de empaquetado es
+`electron-builder.yml`.
 
 `.github/workflows/ci.yml` comprueba lint, pruebas y compilación en cada cambio de `main`.
 `.github/workflows/release.yml` genera el instalador al publicar una etiqueta `vX.Y.Z`, calcula
@@ -170,15 +171,23 @@ después de esa elección; si eliges **Instalar** o **Reinstalar**, no se pide e
 ## Estructura
 
 ```
-electron/            main.cjs, preload.cjs
+electron/            main.cjs, ipc.cjs, music.cjs, updater.cjs, update.cjs, preload.cjs
+electron-builder.yml configuración única del instalador NSIS
+build/icon.png       única fuente de los iconos (PWA y Windows)
 src/lib/color.ts     OKLCH, contraste WCAG, median-cut y paleta
 src/lib/palette.ts   muestreo 32×32 de la portada
 src/lib/db.ts        IndexedDB v2 (canciones + ajustes, palette y contentHash)
 src/lib/metadata.ts  ID3 y forma de onda
-src/hooks/usePlayer  contexto del reproductor, ajustes y temporizador
+src/hooks/usePlayer  contexto del reproductor y motor de audio A/B
+src/hooks/player/    ajustes, temporizador, biblioteca y persistencia
 src/components/      islas, vista de canciones y panel de ajustes
-src/index.css        sistema visual y tokens en :root
-tests/               pruebas de color, contraste y oscurecimiento
+src/index.css        entrada CSS: Tailwind, @source inline("filter") y bloques de src/styles/
+src/styles/          sistema visual por bloques (tokens, islas, ajustes, responsive…)
+src/App.css          entrada de los estilos de la aplicación
+tests/               color, IPC, ajustes, CSS, release y persistencia
 ```
 
-Ver `AGENTS.md` para las reglas de arquitectura y la sección 5 (paleta desde la portada).
+El CSS compilado se mantiene byte a byte respecto a la versión anterior: los bloques se
+importan desde `src/index.css` para que Tailwind siga generando los mismos fallbacks de
+`color-mix`. Ver `AGENTS.md` para las reglas de arquitectura y la sección 5 (paleta desde la
+portada).

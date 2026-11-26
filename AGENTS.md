@@ -11,13 +11,24 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
 - `src/lib/db.ts`: IndexedDB v2 (`idb`); cada registro guarda `palette` y `contentHash`. La v1 se
   migra automáticamente añadiendo `contentHash: null` sin tocar otros campos
   (`src/lib/dbMigration.ts`).
-- `src/hooks/usePlayer.tsx`: motor de audio, cola, modos, persistencia y Media Session.
-- `src/components/*`: islas visuales. `src/index.css`: sistema visual completo.
-- `electron/`: ventana principal y preload de Electron; IPC `music:*` crea y usa
-  `C:\Users\<usuario>\X21 Music\Música`, e IPC `update:*` gestiona las actualizaciones.
-  `electron/update.cjs` compara versiones y valida los releases de GitHub (instalador y `.sha256`).
-  `electron/paths.cjs` y `electron/security.cjs` validan rutas, ventanas e IPC. `dist:win` genera
-  el instalador NSIS.
+- `src/hooks/usePlayer.tsx`: contexto del reproductor y motor de audio A/B. Las piezas
+  extraídas viven en `src/hooks/player/`: `settings.ts` (ajustes y volumen), `useSleepTimer.ts`
+  (temporizador), `useLibrary.ts` (hidratación, importación y carpeta de música) y
+  `usePersistence.ts` (guardado, Media Session y controles del sistema). La API pública de
+  `usePlayer()`/`PlayerContextValue` no cambia.
+- `src/components/*`: islas visuales. `src/index.css` conserva `@import 'tailwindcss'` e importa
+  en orden los bloques de `src/styles/`; `src/App.css` importa `app-layout.css` y
+  `app-islas.css`. Ese orden define la cascada: no reordenarlo sin comparar el CSS compilado.
+- `electron/`: `main.cjs` crea la ventana; `ipc.cjs` valida el emisor de cada IPC; `music.cjs`
+  implementa `music:*` (crea y usa `C:\Users\<usuario>\X21 Music\Música`) y `updater.cjs`
+  implementa `update:*` (clave de un solo uso, descarga y verificación). `electron/update.cjs`
+  compara versiones y valida los releases de GitHub (instalador y `.sha256`).
+  `electron/paths.cjs`, `electron/security.cjs` y `electron/preload.cjs` completan el puente.
+  La configuración única de empaquetado es `electron-builder.yml`; `dist:win` genera el
+  instalador NSIS.
+- Los iconos PWA (`pwa-192x192.png`, `pwa-512x512.png`) se derivan de `build/icon.png` con
+  `pwa-assets.config.ts`; `npm run icons` los copia a `public/` y limpia los sobrantes de
+  `build/`.
 - La CSP se inyecta con un plugin de Vite (`src/lib/csp.ts`): en producción prohíbe scripts en
   línea; en desarrollo permite HMR. Electron rechaza navegaciones ajenas, abre solo HTTPS externo
   y exige que el emisor de cada IPC sea la página de la app; los permisos del sistema se deniegan.
@@ -130,7 +141,7 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
 
 ## 5. Paleta desde la portada (reemplaza "Color de acento extraído de la portada")
 
-**Esta sección prevalece sobre la sección 1 del prompt M2 donde haya contradicción.**
+**Esta sección prevalece sobre la descripción general de la sección 1 donde haya contradicción.**
 
 - Todo el color sale de la portada de la canción actual. No hay cristal gris neutro:
   islas y botones se ven hechos de la portada difuminada y teñidos con sus colores.
@@ -151,4 +162,6 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
 ## 6. Verificación
 
 `npm run lint`, `npm test` y `npm run build` deben pasar. Las pruebas unitarias cubren
-extracción de paleta, contraste del acento y oscurecimiento adaptativo.
+extracción de paleta, contraste del acento y oscurecimiento adaptativo, además de los módulos
+de Electron, los ajustes del reproductor, el orden de los bloques CSS y la configuración de
+release.

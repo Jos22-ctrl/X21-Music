@@ -16,18 +16,10 @@ const CHECK_TIMEOUT_MS = 15_000
 const DOWNLOAD_TIMEOUT_MS = 60_000
 
 /**
- * En Electron se usa net.fetch: respeta la configuración de red de Windows (proxy incluido).
- * Fuera de Electron (pruebas unitarias) se mantiene el fetch de Node.
+ * En la app se inyecta net.fetch de Electron: respeta la configuración de red de Windows
+ * (proxy incluido). En las pruebas se mantiene el fetch global sin cargar Electron.
  */
-function networkFetch(url, options) {
-  try {
-    const electron = require('electron')
-    if (typeof electron?.net?.fetch === 'function') return electron.net.fetch(url, options)
-  } catch {
-    // En las pruebas `electron` es solo la ruta al ejecutable, no un módulo con API.
-  }
-  return fetch(url, options)
-}
+let networkFetch = (url, options) => fetch(url, options)
 
 /** Convierte un fallo de red en un detalle corto y seguro para mostrar en la interfaz. */
 function describeFetchError(error) {
@@ -134,7 +126,8 @@ async function checkGitHubUpdates(currentVersion) {
   }
 }
 
-function registerUpdaterIpc(ipcMain, app, shell) {
+function registerUpdaterIpc(ipcMain, app, shell, fetchFromElectron) {
+  if (typeof fetchFromElectron === 'function') networkFetch = fetchFromElectron
   const trustedHandle = createTrustedHandle(ipcMain, app)
 
   trustedHandle('update:check', async () => {

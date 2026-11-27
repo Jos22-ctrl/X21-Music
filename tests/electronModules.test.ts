@@ -39,7 +39,7 @@ describe('módulos de Electron', () => {
     expect(updater).toContain('update:check')
     expect(updater).toContain('update:install')
     // La búsqueda usa la pila de red de Electron para respetar el proxy de Windows.
-    expect(updater).toContain('electron?.net?.fetch')
+    expect(read('electron/main.cjs')).toContain('net.fetch.bind(net)')
   })
 
   it('acepta la URL del emisor como propiedad de Electron 45', async () => {

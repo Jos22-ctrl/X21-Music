@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell, ipcMain, session } = require('electron')
+const { app, BrowserWindow, Menu, shell, ipcMain, session, net } = require('electron')
 const path = require('node:path')
 const { DEV_URL, frameOptions } = require('./ipc.cjs')
 const { registerMusicIpc } = require('./music.cjs')
@@ -8,7 +8,7 @@ const { isAllowedExternalUrl, isAllowedFrameUrl } = require('./security.cjs')
 let mainWindow = null
 
 registerMusicIpc(ipcMain, app, shell)
-registerUpdaterIpc(ipcMain, app, shell)
+registerUpdaterIpc(ipcMain, app, shell, net.fetch.bind(net))
 
 function createWindow() {
   mainWindow = new BrowserWindow({

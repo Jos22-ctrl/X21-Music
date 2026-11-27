@@ -41,8 +41,8 @@ jobs:
           if (-not $entrada -or $entrada.Line -notmatch $patron) {
             throw "Falta la entrada de $version en CHANGELOG.md"
           }
-          "letra=$($Matches[1])" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding ascii
-          "descripcion=$($Matches[2])" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding ascii
+          "letra=$($Matches[1])" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "descripcion=$($Matches[2])" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       # GitHub publica el .exe con puntos en lugar de espacios; la suma debe usar ese nombre.
       - name: Generar el SHA-256

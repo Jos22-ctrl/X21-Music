@@ -1,9 +1,78 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { FilePlus, FolderOpen, LoaderCircle, Music, Plus, Search, Trash2 } from 'lucide-react'
+import { useCoverUrl } from '../hooks/useTrackUrls'
+import { useVirtualList } from '../hooks/useVirtualList'
 import { usePlayer } from '../hooks/usePlayer'
 import { formatTime } from '../lib/format'
 import { pageSizeFor } from '../lib/performance'
+import type { Track } from '../types'
 import { MarqueeText } from './MarqueeText'
+
+/** 44 px de fila + 5 px de separación, según biblioteca.css. */
+const ROW_HEIGHT = 49
+
+interface LibraryRowProps {
+  track: Track
+  isCurrent: boolean
+  onPlay: (id: string) => void
+  onEnqueue: (id: string) => void
+  onRemove: (id: string) => Promise<void>
+}
+
+const LibraryRow = memo(function LibraryRow({
+  track,
+  isCurrent,
+  onPlay,
+  onEnqueue,
+  onRemove,
+}: LibraryRowProps) {
+  const coverUrl = useCoverUrl(track)
+  return (
+    <div className={`track-row ${isCurrent ? 'is-current' : ''}`}>
+      <button
+        type="button"
+        className="track-row__main"
+        onClick={() => onPlay(track.id)}
+        title={`Reproducir ${track.title}`}
+      >
+        <span className="track-row__thumb">
+          {coverUrl ? (
+            <img src={coverUrl} alt="" loading="lazy" decoding="async" />
+          ) : (
+            <Music size={15} />
+          )}
+        </span>
+        <span className="track-row__text">
+          <strong>
+            <MarqueeText>{track.title}</MarqueeText>
+          </strong>
+          <small>
+            <MarqueeText>{track.artist}</MarqueeText>
+          </small>
+        </span>
+        <span className="track-row__time tabular">{formatTime(track.durationMs / 1000)}</span>
+      </button>
+      <button
+        type="button"
+        className="icon-btn tiny"
+        onClick={() => onEnqueue(track.id)}
+        aria-label={`Añadir ${track.title} a la cola`}
+        title="Añadir a la cola"
+      >
+        <Plus size={14} />
+      </button>
+      <button
+        type="button"
+        className="icon-btn tiny danger"
+        onClick={() => void onRemove(track.id)}
+        aria-label={`Quitar ${track.title} de la biblioteca`}
+        title="Quitar de la biblioteca"
+      >
+        <Trash2 size={14} />
+      </button>
+    </div>
+  )
+})
 
 export function LibraryIsland() {
   const {
@@ -39,6 +108,7 @@ export function LibraryIsland() {
     [search, source],
   )
   const shown = visible.slice(0, limit)
+  const virtual = useVirtualList(shown.length, ROW_HEIGHT, 4)
 
   useEffect(() => setLimit(pageSize), [pageSize, search, tab])
 
@@ -110,7 +180,7 @@ export function LibraryIsland() {
         />
       </label>
 
-      <div className="library-island__list island-scroll">
+      <div className="library-island__list island-scroll" ref={virtual.ref}>
         {shown.length === 0 ? (
           <div className="library-empty">
             <Music size={34} strokeWidth={1.3} />
@@ -128,50 +198,32 @@ export function LibraryIsland() {
             )}
           </div>
         ) : (
-          shown.map((track) => (
-            <div
-              key={track.id}
-              className={`track-row ${currentTrack?.id === track.id ? 'is-current' : ''}`}
-            >
-              <button
-                type="button"
-                className="track-row__main"
-                onClick={() => playTrack(track.id)}
-                title={`Reproducir ${track.title}`}
-              >
-                <span className="track-row__thumb">
-                  {track.coverUrl ? <img src={track.coverUrl} alt="" /> : <Music size={15} />}
-                </span>
-                <span className="track-row__text">
-                  <strong>
-                    <MarqueeText>{track.title}</MarqueeText>
-                  </strong>
-                  <small>
-                    <MarqueeText>{track.artist}</MarqueeText>
-                  </small>
-                </span>
-                <span className="track-row__time tabular">{formatTime(track.durationMs / 1000)}</span>
-              </button>
-              <button
-                type="button"
-                className="icon-btn tiny"
-                onClick={() => enqueue(track.id)}
-                aria-label={`Añadir ${track.title} a la cola`}
-                title="Añadir a la cola"
-              >
-                <Plus size={14} />
-              </button>
-              <button
-                type="button"
-                className="icon-btn tiny danger"
-                onClick={() => void removeTrack(track.id)}
-                aria-label={`Quitar ${track.title} de la biblioteca`}
-                title="Quitar de la biblioteca"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          ))
+          <>
+            {virtual.paddingTop > 0 && (
+              <div
+                className="virtual-spacer"
+                style={{ height: Math.max(0, virtual.paddingTop - 5) }}
+                aria-hidden="true"
+              />
+            )}
+            {shown.slice(virtual.start, virtual.end).map((track) => (
+              <LibraryRow
+                key={track.id}
+                track={track}
+                isCurrent={currentTrack?.id === track.id}
+                onPlay={playTrack}
+                onEnqueue={enqueue}
+                onRemove={removeTrack}
+              />
+            ))}
+            {virtual.paddingBottom > 0 && (
+              <div
+                className="virtual-spacer"
+                style={{ height: Math.max(0, virtual.paddingBottom - 5) }}
+                aria-hidden="true"
+              />
+            )}
+          </>
         )}
         {visible.length > limit && (
           <button

@@ -18,6 +18,8 @@ export interface StoredTrack {
   /** Paleta calculada una vez por canción y persistida en el registro. */
   palette: Palette
   waveform: number[]
+  /** Opcional: true cuando la forma de onda real ya se calculó en tiempo de inactividad. */
+  waveformReal?: boolean
   addedAt: number
 }
 

@@ -72,6 +72,40 @@ export async function saveTrack(track: StoredTrack): Promise<void> {
   }
 }
 
+/** Un lote = una transacción de escritura; reduce el coste al importar. */
+export async function saveTracks(tracks: StoredTrack[]): Promise<void> {
+  if (!tracks.length) return
+  try {
+    const db = await getDb()
+    const transaction = db.transaction('tracks', 'readwrite')
+    await Promise.all(tracks.map((track) => transaction.store.put(track)))
+    await transaction.done
+  } catch {
+    // Igual que saveTrack: la sesión actual sigue siendo funcional.
+  }
+}
+
+export async function getTrack(id: string): Promise<StoredTrack | undefined> {
+  try {
+    const db = await getDb()
+    return await db.get('tracks', id)
+  } catch {
+    return undefined
+  }
+}
+
+/** Actualiza solo la forma de onda; conserva el resto del registro guardado. */
+export async function updateTrackWaveform(id: string, waveform: number[]): Promise<void> {
+  try {
+    const db = await getDb()
+    const record = await db.get('tracks', id)
+    if (!record) return
+    await db.put('tracks', { ...record, waveform, waveformReal: true })
+  } catch {
+    // Una forma de onda calculada no justifica perder la pista.
+  }
+}
+
 export async function deleteTrack(id: string): Promise<void> {
   try {
     const db = await getDb()

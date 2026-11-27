@@ -124,6 +124,12 @@
   padding: 5px;
   border-radius: var(--radius-inner);
   transition: background 200ms ease;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 44px;
+}
+
+.virtual-spacer {
+  flex: none;
 }
 
 .track-row:hover {

@@ -4,6 +4,13 @@ import { PlaybackProvider } from './hooks/usePlayer'
 import './index.css'
 import App from './App.tsx'
 
+// REQUIERE PRUEBA MANUAL EN WINDOWS: comprobar memoria con 500/2000/10000 pistas sembradas.
+if (import.meta.env.DEV) {
+  void import('./dev/seed').then(({ seedFakeTracks }) => {
+    Object.assign(window, { __x21Seed: seedFakeTracks })
+  })
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <PlaybackProvider>

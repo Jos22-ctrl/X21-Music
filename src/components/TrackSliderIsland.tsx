@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
 import { ChevronsLeft, ChevronsRight, Disc3 } from 'lucide-react'
 import { usePlayer } from '../hooks/usePlayer'
+import { useCoverUrl } from '../hooks/useTrackUrls'
 import type { Track } from '../types'
 import { MarqueeText } from './MarqueeText'
 
@@ -18,6 +19,19 @@ const haptic = (ms: number): void => {
   } catch {
     // Vibración no soportada: se ignora.
   }
+}
+
+function SliderThumb({ track, isCenter }: { track: Track; isCenter: boolean }) {
+  const coverUrl = useCoverUrl(track)
+  return (
+    <span className={isCenter ? 'is-center' : ''}>
+      {coverUrl ? (
+        <img src={coverUrl} alt="" loading="lazy" decoding="async" />
+      ) : (
+        <Disc3 size={15} />
+      )}
+    </span>
+  )
 }
 
 /** Isla deslizante: arrastra el Tirador para saltar canciones; mantén en el borde para seguir. */
@@ -162,13 +176,11 @@ export function TrackSliderIsland() {
               const item = trackAt(previewOffset + relative)
               if (!item) return null
               return (
-                <span key={`${item.id}-${relative}`} className={relative === 0 ? 'is-center' : ''}>
-                  {item.coverUrl ? (
-                    <img src={item.coverUrl} alt="" />
-                  ) : (
-                    <Disc3 size={15} />
-                  )}
-                </span>
+                <SliderThumb
+                  key={`${item.id}-${relative}`}
+                  track={item}
+                  isCenter={relative === 0}
+                />
               )
             })}
           </div>

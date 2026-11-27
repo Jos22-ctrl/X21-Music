@@ -23,7 +23,7 @@ import { usePlayer } from '../hooks/usePlayer'
 import { formatApproximateSize } from '../lib/filePaths'
 import { formatTime } from '../lib/format'
 import { DEFAULT_ISLAND_LAYOUT } from '../lib/islandLayout'
-import { APP_LABEL, APP_STAGE, APP_VERSION } from '../lib/version'
+import { APP_LABEL } from '../lib/version'
 import { UpdateSection } from './UpdateSection'
 
 export type DialogTab = 'settings' | 'updates' | 'about'
@@ -296,6 +296,20 @@ export function SettingsDialog({ tab, onTabChange, onClose }: SettingsDialogProp
                   label="Modo de bajo rendimiento"
                 />
               </div>
+              <div className="setting-row">
+                <div className="setting-row__info">
+                  <strong>Reducir animaciones</strong>
+                  <small>
+                    Detiene las entradas, la respiración del botón de reproducción y el ecualizador.
+                    Se guarda en este equipo y respeta la preferencia de Windows.
+                  </small>
+                </div>
+                <Toggle
+                  checked={settings.reduceMotion}
+                  onChange={(value) => updateSettings({ reduceMotion: value })}
+                  label="Reducir animaciones"
+                />
+              </div>
             </section>
 
             <section className="settings-section">
@@ -450,8 +464,17 @@ export function SettingsDialog({ tab, onTabChange, onClose }: SettingsDialogProp
                 <Check size={13} /> Música en tu carpeta de Users y ajustes legibles
               </li>
             </ul>
-            <h3>Novedades de 0.9.14</h3>
+            <h3>Novedades de 1.0.0A</h3>
             <ul className="about__list">
+              <li>
+                <Check size={13} /> Importación por lotes, menos memoria y listas virtualizadas
+              </li>
+              <li>
+                <Check size={13} /> Animaciones discretas con ajuste «Reducir animaciones»
+              </li>
+              <li>
+                <Check size={13} /> Sistema de versiones Alpha y actualizaciones con letra
+              </li>
               <li>
                 <Check size={13} /> Corregido el fallo que impedía consultar GitHub desde el botón
                 de actualizaciones
@@ -506,7 +529,7 @@ export function SettingsDialog({ tab, onTabChange, onClose }: SettingsDialogProp
               </li>
             </ul>
             <p className="about__footer">
-              Versión {APP_VERSION} · Etapa {APP_STAGE} · Créditos: Claude y X21
+              Versión {APP_LABEL} · Créditos: Claude y X21
             </p>
           </div>
         )}

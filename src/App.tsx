@@ -94,7 +94,8 @@ export default function App() {
     )
     style.setProperty('--low-performance', settings.lowPerformance ? '1' : '0')
     document.documentElement.dataset.lowPerformance = settings.lowPerformance ? 'true' : 'false'
-  }, [activePalette, currentTrack?.coverUrl, settings.monoDark, settings.lowPerformance])
+    document.documentElement.dataset.motion = settings.reduceMotion ? 'reduced' : 'full'
+  }, [activePalette, currentTrack?.coverUrl, settings.monoDark, settings.lowPerformance, settings.reduceMotion])
 
   return (
     <>

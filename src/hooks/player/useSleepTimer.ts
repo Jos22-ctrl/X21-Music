@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 /** Temporizador de apagado: cuenta atrás en vivo y aviso al expirar. */
 export function useSleepTimer(onExpire: () => void) {
@@ -23,11 +23,11 @@ export function useSleepTimer(onExpire: () => void) {
     return () => window.clearInterval(interval)
   }, [onExpire, sleepEndsAt])
 
-  const setSleepTimer = (minutes: number | null): void => {
+  const setSleepTimer = useCallback((minutes: number | null): void => {
     setSleepMinutes(minutes)
     setSleepEndsAt(minutes ? Date.now() + minutes * 60_000 : null)
     setSleepRemaining(minutes ? minutes * 60 : null)
-  }
+  }, [])
 
   return { sleepMinutes, sleepRemaining, setSleepTimer }
 }

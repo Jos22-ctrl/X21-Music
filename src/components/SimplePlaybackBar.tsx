@@ -35,7 +35,7 @@ export function SimplePlaybackBar() {
       </button>
       <button
         type="button"
-        className="btn-play simple-controls__play"
+        className={`btn-play simple-controls__play ${isPlaying ? 'is-playing' : ''}`}
         onClick={togglePlay}
         aria-label={isPlaying ? 'Pausar' : 'Reproducir'}
       >

@@ -4,6 +4,7 @@ const fs = require('node:fs/promises')
 const path = require('node:path')
 const { createTrustedHandle } = require('./ipc.cjs')
 const {
+  detectObsoleteRelease,
   isNewerVersion,
   normalizeGitHubRelease,
   parseChecksumFile,
@@ -93,6 +94,26 @@ async function fileSha256(filePath) {
   return hash.digest('hex')
 }
 
+/**
+ * Segunda consulta opcional: detecta versiones marcadas como F en GitHub.
+ * Si falla, se ignora; nunca retrasa ni bloquea la búsqueda principal.
+ */
+async function fetchObsoleteRelease() {
+  try {
+    const response = await networkFetch(
+      `https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=20`,
+      {
+        headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'X21-Music' },
+        signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
+      },
+    )
+    if (!response.ok) return null
+    return detectObsoleteRelease(await response.json())
+  } catch {
+    return null
+  }
+}
+
 /** Consulta solo releases de GitHub; nunca usa archivos locales. */
 async function checkGitHubUpdates(currentVersion) {
   const unavailable = (error) => ({ available: false, currentVersion, source: 'github', error })
@@ -110,14 +131,22 @@ async function checkGitHubUpdates(currentVersion) {
       return unavailable('GitHub devolvió una respuesta inesperada.')
     }
 
+    const obsoleteRelease = await fetchObsoleteRelease()
+    const conObsoleta = (resultado) =>
+      obsoleteRelease ? { ...resultado, obsoleteRelease } : resultado
     const info = normalizeGitHubRelease(release, currentVersion)
     if (!info.available && !isNewerVersion(release?.tag_name, currentVersion)) {
-      return { ...info, message: 'Ya tienes la última versión publicada en GitHub.' }
+      return conObsoleta({
+        ...info,
+        message: 'Ya tienes la última versión publicada en GitHub.',
+      })
     }
     if (!info.available) {
-      return unavailable('El último release de GitHub no trae un instalador verificable.')
+      return conObsoleta(
+        unavailable('El último release de GitHub no trae un instalador verificable.'),
+      )
     }
-    return info
+    return conObsoleta(info)
   } catch (error) {
     const detalle = describeFetchError(error)
     return unavailable(

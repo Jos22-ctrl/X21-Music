@@ -1,12 +1,42 @@
 const path = require('node:path')
 
-/** Convierte "v0.9.7" o "0.9.7+build" en números comparables. */
+/** Convierte `v1.0.0A`, `1.0.0-A` o `1.0.0+build.2` en números comparables. */
 function parseVersion(value) {
-  return String(value || '')
-    .replace(/^v/i, '')
-    .split(/[.\-+]/)
-    .map((part) => Number.parseInt(part, 10))
-    .filter((number) => Number.isFinite(number))
+  const match = String(value || '')
+    .trim()
+    .match(/^v?(\d+)\.(\d+)\.(\d+)(?:\+build\.(\d+))?/i)
+  if (!match) return []
+  const numeros = [Number(match[1]), Number(match[2]), Number(match[3])]
+  if (match[4] !== undefined) numeros.push(Number(match[4]))
+  return numeros
+}
+
+/** Extrae `X.Y.Z` y su letra de un tag o del título de un release. */
+function findReleaseMark(value) {
+  const match = String(value || '')
+    .trim()
+    .match(/\bv?(\d+\.\d+\.\d+)\s*-?\s*([AMTF])\b/i)
+  return match ? { version: match[1], letter: match[2].toUpperCase() } : null
+}
+
+/** Letra de etapa de un tag; F significa «versión obsoleta» en GitHub. */
+function releaseLetter(value) {
+  return findReleaseMark(value)?.letter ?? ''
+}
+
+/**
+ * Busca una versión marcada como F en la lista de releases. Devuelve null si no hay
+ * ninguna; esta búsqueda es informativa y nunca bloquea las actualizaciones.
+ */
+function detectObsoleteRelease(releases) {
+  if (!Array.isArray(releases)) return null
+  for (const release of releases) {
+    const mark = findReleaseMark(release?.tag_name) ?? findReleaseMark(release?.name)
+    if (mark?.letter === 'F') {
+      return { version: mark.version, letter: 'F', url: safeReleaseUrl(release?.html_url) }
+    }
+  }
+  return null
 }
 
 /** true solo si latest es mayor que current. */
@@ -99,6 +129,9 @@ function normalizeGitHubRelease(release, currentVersion) {
 
 module.exports = {
   parseVersion,
+  findReleaseMark,
+  releaseLetter,
+  detectObsoleteRelease,
   isNewerVersion,
   safeInstallerName,
   safeDownloadUrl,

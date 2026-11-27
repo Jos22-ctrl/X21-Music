@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  detectObsoleteRelease,
+  findReleaseMark,
   isNewerVersion,
   normalizeGitHubRelease,
   parseChecksumFile,
+  parseVersion,
+  releaseLetter,
   safeChecksumUrl,
   safeDownloadUrl,
   safeInstallerName,
@@ -37,6 +41,40 @@ describe('actualizaciones desde GitHub', () => {
     expect(isNewerVersion('v0.9.6+build.2', '0.9.6')).toBe(true)
     expect(isNewerVersion('0.9.6', '0.9.6')).toBe(false)
     expect(isNewerVersion('0.9.5', '0.9.6')).toBe(false)
+  })
+
+  it('tolera sufijos con letra y guion sin comparar la letra', () => {
+    expect(parseVersion('v1.0.0A')).toEqual([1, 0, 0])
+    expect(parseVersion('1.0.0-A')).toEqual([1, 0, 0])
+    expect(parseVersion('1.0.0+build.2')).toEqual([1, 0, 0, 2])
+    expect(isNewerVersion('v1.0.0A', '0.9.9')).toBe(true)
+    expect(isNewerVersion('v1.0.0A', '1.0.0')).toBe(false)
+    expect(isNewerVersion('1.0.0-A', '1.0.0')).toBe(false)
+    expect(releaseLetter('v1.0.0A')).toBe('A')
+    expect(releaseLetter('1.0.0-M')).toBe('M')
+    expect(releaseLetter('v1.0.0')).toBe('')
+    expect(findReleaseMark('Alpha 1.0.0F — versión obsoleta')).toEqual({
+      version: '1.0.0',
+      letter: 'F',
+    })
+  })
+
+  it('detecta la letra F en la lista de releases sin exigirla en la etiqueta', () => {
+    const releases = [
+      { tag_name: 'v1.0.1', name: 'Alpha 1.0.1A — nueva versión', html_url: 'https://github.com/x' },
+      {
+        tag_name: 'v1.0.0',
+        name: 'Alpha 1.0.0F — versión obsoleta',
+        html_url: 'https://github.com/Jos22-ctrl/X21-Music/releases/tag/v1.0.0',
+      },
+    ]
+    expect(detectObsoleteRelease(releases)).toEqual({
+      version: '1.0.0',
+      letter: 'F',
+      url: 'https://github.com/Jos22-ctrl/X21-Music/releases/tag/v1.0.0',
+    })
+    expect(detectObsoleteRelease([releases[0]])).toBeNull()
+    expect(detectObsoleteRelease(null)).toBeNull()
   })
 
   it('acepta solo nombres de instalador seguros', () => {
@@ -131,5 +169,45 @@ describe('fallos de red al buscar actualizaciones', () => {
     )
     const info = await checkGitHubUpdates('0.9.12')
     expect(info.error).toBe('GitHub devolvió una respuesta inesperada.')
+  })
+
+  it('muestra una F detectada sin impedir la actualización', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => release({ tag_name: 'v1.0.1' }) })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => [
+            {
+              tag_name: 'v1.0.0',
+              name: 'Alpha 1.0.0F — versión obsoleta',
+              html_url: 'https://github.com/Jos22-ctrl/X21-Music/releases/tag/v1.0.0',
+            },
+          ],
+        }),
+    )
+    const info = await checkGitHubUpdates('1.0.0')
+    expect(info.available).toBe(true)
+    expect(info.obsoleteRelease).toEqual({
+      version: '1.0.0',
+      letter: 'F',
+      url: 'https://github.com/Jos22-ctrl/X21-Music/releases/tag/v1.0.0',
+    })
+  })
+
+  it('ignora un fallo al buscar la marca F', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => release({ tag_name: 'v1.0.1' }) })
+        .mockResolvedValueOnce({ ok: false, status: 500 }),
+    )
+    const info = await checkGitHubUpdates('1.0.0')
+    expect(info.available).toBe(true)
+    expect(info.error).toBeUndefined()
+    expect(info.obsoleteRelease).toBeUndefined()
   })
 })

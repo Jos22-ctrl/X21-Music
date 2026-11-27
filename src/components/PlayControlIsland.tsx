@@ -20,7 +20,7 @@ export function PlayControlIsland() {
       </button>
       <button
         type="button"
-        className="btn-play"
+        className={`btn-play ${isPlaying ? 'is-playing' : ''}`}
         onClick={togglePlay}
         aria-label={isPlaying ? 'Pausar' : 'Reproducir'}
         style={{ '--progress': progress } as CSSProperties}

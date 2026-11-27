@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react'
 import type { ReactNode } from 'react'
 import { crossfadeGain, nextTrackId, shouldStartCrossfade } from '../lib/crossfade'
@@ -18,9 +19,19 @@ import {
   type PersistedSnapshot,
 } from '../lib/persistence'
 import { clampVolume, DEFAULT_SETTINGS, normalizeSettings } from './player/settings'
+import { useLazyWaveform } from './player/useLazyWaveform'
 import { useLibrary } from './player/useLibrary'
 import { usePersistence } from './player/usePersistence'
 import { useSleepTimer } from './player/useSleepTimer'
+import {
+  clearTrackUrls,
+  ensureAudioUrl,
+  ensureCoverUrl,
+  getAudioUrl,
+  getCoverUrl,
+  getUrlVersion,
+  subscribeUrls,
+} from '../lib/trackUrls'
 import type { PlaybackSettings, RepeatMode, Track } from '../types'
 
 export interface PlayerContextValue {
@@ -105,8 +116,9 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   } | null>(null)
   const autoFadeRef = useRef<string | null>(null)
   const autoFadeCheckRef = useRef<() => void>(() => undefined)
-  const urlsRef = useRef<string[]>([])
   const settingsRef = useRef(settings)
+  // Las URLs se crean fuera del render; este contador solo las observa.
+  const urlVersion = useSyncExternalStore(subscribeUrls, getUrlVersion, getUrlVersion)
   const latestRef = useRef({ tracks, currentId, queueIds, repeatMode, isShuffle, isPlaying })
   const advanceRef = useRef<() => void>(() => undefined)
   const actionsRef = useRef<{ togglePlay: () => void; next: () => void; prev: () => void }>({
@@ -145,10 +157,25 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     preferences: settings,
   }
 
-  const currentTrack = tracks.find((track) => track.id === currentId) ?? null
-  const queue = queueIds
-    .map((id) => tracks.find((track) => track.id === id))
-    .filter((track): track is Track => Boolean(track))
+  const storedCurrent = tracks.find((track) => track.id === currentId) ?? null
+  const currentTrack = useMemo(
+    () =>
+      storedCurrent
+        ? {
+            ...storedCurrent,
+            audioUrl: getAudioUrl(storedCurrent.id) || storedCurrent.audioUrl,
+            coverUrl: getCoverUrl(storedCurrent.id) ?? storedCurrent.coverUrl,
+          }
+        : null,
+    [storedCurrent, urlVersion],
+  )
+  const queue = useMemo(
+    () =>
+      queueIds
+        .map((id) => tracks.find((track) => track.id === id))
+        .filter((track): track is Track => Boolean(track)),
+    [queueIds, tracks],
+  )
   const durationSeconds = duration || (currentTrack?.durationMs ?? 0) / 1000
   const progress = computeProgress(currentTime, durationSeconds)
   const palette = currentTrack?.palette ?? DEFAULT_PALETTE
@@ -214,9 +241,11 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       finishCrossfade(false)
       clearPending()
       if (!from || !incoming) return
+      const audioUrl = ensureAudioUrl(track.id) || track.audioUrl
+      if (!audioUrl) return
 
       incoming.pause()
-      incoming.src = track.audioUrl
+      incoming.src = audioUrl
       incoming.load()
       incoming.currentTime = 0
       incoming.volume = 0
@@ -270,7 +299,10 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     (id: string, shouldPlay: boolean): void => {
       const prefs = settingsRef.current
       const active = activeAudio()
-      const track = latestRef.current.tracks.find((item) => item.id === id)
+      const stored = latestRef.current.tracks.find((item) => item.id === id)
+      const track = stored
+        ? { ...stored, audioUrl: ensureAudioUrl(id) || stored.audioUrl }
+        : null
       clearPending()
 
       const commit = (): void => {
@@ -333,8 +365,13 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     ) {
       return
     }
-    const target = state.tracks.find((track) => track.id === next)
-    if (target) crossfadeTo(target, seconds)
+    const storedTarget = state.tracks.find((track) => track.id === next)
+    if (storedTarget) {
+      crossfadeTo(
+        { ...storedTarget, audioUrl: ensureAudioUrl(storedTarget.id) || storedTarget.audioUrl },
+        seconds,
+      )
+    }
   }
 
   // --- Motor de audio -----------------------------------------------------
@@ -353,6 +390,14 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     const attach = (audio: HTMLAudioElement): (() => void) => {
       const onTime = (): void => {
         if (audio !== activeAudio()) return
+        positionRef.current = clampPersistedTime(audio.currentTime)
+        // Oculto: se sigue reproduciendo, pero no se repinta el tiempo.
+        if (document.hidden) return
+        setCurrentTime(positionRef.current)
+        autoFadeCheckRef.current()
+      }
+      const onVisibility = (): void => {
+        if (document.hidden || audio !== activeAudio()) return
         positionRef.current = clampPersistedTime(audio.currentTime)
         setCurrentTime(positionRef.current)
         autoFadeCheckRef.current()
@@ -383,6 +428,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       }
 
       audio.addEventListener('timeupdate', onTime)
+      document.addEventListener('visibilitychange', onVisibility)
       audio.addEventListener('durationchange', onMeta)
       audio.addEventListener('loadedmetadata', onMeta)
       audio.addEventListener('play', onPlay)
@@ -390,6 +436,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       audio.addEventListener('ended', onEnded)
       return () => {
         audio.removeEventListener('timeupdate', onTime)
+        document.removeEventListener('visibilitychange', onVisibility)
         audio.removeEventListener('durationchange', onMeta)
         audio.removeEventListener('loadedmetadata', onMeta)
         audio.removeEventListener('play', onPlay)
@@ -410,14 +457,12 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       a.removeAttribute('src')
       b.removeAttribute('src')
       slotsRef.current = { a: null, b: null }
-      urlsRef.current.forEach((url) => URL.revokeObjectURL(url))
-      urlsRef.current = []
+      clearTrackUrls()
     }
   }, [activeAudio, clearPending, finishCrossfade, saveNow])
 
   // --- Biblioteca: hidratación, importación y carpeta de música ------------
   const { importFiles, removeTrack, copyLibraryToFolder, handleOpenMusicFolder } = useLibrary({
-    urlsRef,
     latestRef,
     settingsRef,
     restoredTimeRef,
@@ -437,6 +482,23 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     setImportProgress,
     setError,
   })
+
+  // Las URLs se crean solo para la pista activa, su portada y la siguiente.
+  useEffect(() => {
+    if (!isHydrated || !currentId) return
+    const state = latestRef.current
+    const nextId = nextTrackId({
+      queueIds: state.queueIds,
+      currentId: state.currentId,
+      repeatMode: state.repeatMode,
+      isShuffle: state.isShuffle,
+    })
+    ensureAudioUrl(currentId)
+    ensureCoverUrl(currentId)
+    if (nextId) ensureAudioUrl(nextId)
+  }, [currentId, isHydrated, queueIds, repeatMode, isShuffle])
+
+  useLazyWaveform({ tracks, isHydrated, isImporting, setTracks })
 
   const play = useCallback((): void => {
     const audio = activeAudio()

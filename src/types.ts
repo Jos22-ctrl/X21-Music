@@ -18,6 +18,8 @@ export interface StoredTrack {
   /** Paleta calculada una vez por canción y persistida en el registro. */
   palette: Palette
   waveform: number[]
+  /** Opcional: true cuando la forma de onda real ya se calculó en tiempo de inactividad. */
+  waveformReal?: boolean
   addedAt: number
 }
 
@@ -53,6 +55,8 @@ export interface PlaybackSettings {
   playbackBarStyle: PlaybackBarStyle
   /** Reduce animaciones, desenfoques y cantidad de elementos dibujados. */
   lowPerformance: boolean
+  /** Ajuste persistente para detener las animaciones de entrada y los bucles. */
+  reduceMotion: boolean
 }
 
 export interface PersistedSettings {

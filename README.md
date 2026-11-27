@@ -1,10 +1,10 @@
-# X21 Music — pre-alpha 0.9.14
+# X21 Music — Alpha 1.0.0A
 
 Reproductor de música **local para Windows** con **Diseño de Islas** y una interfaz cuyo
 color se deriva por completo de la portada de la canción actual. Todo se procesa en el
 dispositivo: metadatos ID3, portadas, forma de onda, biblioteca y paleta. Sin backend.
 
-**Versión actual: pre-alpha 0.9.14** (también visible en «Acerca de» dentro de la app, junto
+**Versión actual: Alpha 1.0.0A** (también visible en «Acerca de» dentro de la app, junto
 al resumen de novedades). Proyecto creado por **Claude y X21**.
 
 ## Características
@@ -83,10 +83,14 @@ al resumen de novedades). Proyecto creado por **Claude y X21**.
   detiene la reproducción al terminar.
 - **Vista «Canciones»**: vista completa sin reproductor, con canciones, álbum, artista, fecha
   de incorporación y duración; filtros «Recién agregadas/Todas», búsqueda y ordenación.
-- **Acerca de**: versión `pre-alpha 0.9.14`, resumen de características y novedades de esta
+- **Acerca de**: versión `Alpha 1.0.0A`, resumen de características y novedades de esta
   versión, con créditos a Claude y X21.
-- **Accesibilidad**: contraste verificado, foco visible, `prefers-reduced-motion` y
-  `prefers-reduced-transparency`.
+- **Accesibilidad**: contraste verificado, foco visible, `prefers-reduced-motion`, el ajuste
+  «Reducir animaciones» y `prefers-reduced-transparency`.
+- **Movimiento**: entradas breves de vistas e islas, respiración del botón principal mientras
+  suena y ecualizador en la fila actual; todo con `transform`/`opacity` y sin cambiar el diseño.
+- **Versiones Alpha**: la etapa, la letra y las reglas de `X.Y.Z` están descritas en
+  [`docs/VERSIONES.md`](docs/VERSIONES.md) y el detalle de cambios en [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Requisitos
 
@@ -127,6 +131,7 @@ npm run lint           # tsc --noEmit
 npm test               # vitest run
 npm run build          # tsc -b && vite build
 npm run icons          # iconos PWA derivados de build/icon.png
+npm run version:bump -- Z   # sube X, Y o Z; sin letras
 ```
 
 ## Generar el ejecutable de Windows
@@ -135,15 +140,16 @@ npm run icons          # iconos PWA derivados de build/icon.png
 npm run dist:win
 ```
 
-Crea `release/X21 Music Setup 0.9.14.exe` (instalador NSIS x64, con acceso directo en
+Crea `release/X21 Music Setup 1.0.0.exe` (instalador NSIS x64, con acceso directo en
 escritorio y menú de inicio). Cierra el reproductor antes de empaquetar o instalar para
 evitar que Windows bloquee el archivo. Para desarrollo rápido, `npm run electron` abre la
 ventana Electron usando el `dist` ya compilado. La única configuración de empaquetado es
 `electron-builder.yml`.
 
 `.github/workflows/ci.yml` comprueba lint, pruebas y compilación en cada cambio de `main`.
-`.github/workflows/release.yml` genera el instalador al publicar una etiqueta `vX.Y.Z`, calcula
-su SHA-256 con el nombre con puntos que usa GitHub y crea el release con ambos assets.
+`.github/workflows/release.yml` genera el instalador al publicar una etiqueta `vX.Y.Z` (sin
+letra), calcula su SHA-256 con el nombre con puntos que usa GitHub y crea el release con ambos
+assets y el título `Alpha X.Y.ZL — descripción corta` tomado del `CHANGELOG.md`.
 
 También se genera una PWA instalable cuando se sirve por http(s); en Electron se carga
 por `file://` y el service worker no se registra.

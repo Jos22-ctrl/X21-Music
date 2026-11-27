@@ -22,6 +22,28 @@ jobs:
       - run: npm test
       - run: npm run dist:win
 
+      # La etiqueta es vX.Y.Z (sin letra); la letra y el resumen salen del CHANGELOG.
+      - name: Leer la versión publicada
+        id: nota
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          if ($tag -notmatch '^v\d+\.\d+\.\d+$') {
+            throw "La etiqueta debe ser vX.Y.Z sin letra: $tag"
+          }
+          $version = $tag.TrimStart('v')
+          $pkgVersion = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($version -ne $pkgVersion) {
+            throw "La etiqueta $version no coincide con package.json ($pkgVersion)"
+          }
+          $patron = '^## \[' + [regex]::Escape($version) + '([AMTF])\] - \d{4}-\d{2}-\d{2} — (.+)$'
+          $entrada = Select-String -Path CHANGELOG.md -Pattern $patron | Select-Object -First 1
+          if (-not $entrada -or $entrada.Line -notmatch $patron) {
+            throw "Falta la entrada de $version en CHANGELOG.md"
+          }
+          "letra=$($Matches[1])" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "descripcion=$($Matches[2])" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
       # GitHub publica el .exe con puntos en lugar de espacios; la suma debe usar ese nombre.
       - name: Generar el SHA-256
         shell: pwsh
@@ -30,7 +52,7 @@ jobs:
           $exe = "release/X21 Music Setup $version.exe"
           $asset = "X21.Music.Setup.$version.exe"
           $hash = (Get-FileHash -Algorithm SHA256 -Path $exe).Hash.ToLowerInvariant()
-          "$hash  $asset" | Set-Content -Path "release/X21 Music Setup $version.sha256" -Encoding ascii
+          "$hash  $asset" | Set-Content -Path "release/X21 Music Setup $version.exe.sha256" -Encoding ascii
 
       - name: Publicar el release
         shell: pwsh
@@ -38,8 +60,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $version = "${{ github.ref_name }}".TrimStart('v')
+          $letra = "${{ steps.nota.outputs.letra }}"
+          $descripcion = "${{ steps.nota.outputs.descripcion }}"
+          $titulo = "Alpha $version$letra — $descripcion"
           gh release create "${{ github.ref_name }}" `
             "release/X21 Music Setup $version.exe" `
-            "release/X21 Music Setup $version.sha256" `
-            --title "X21 Music pre-alpha $version" `
-            --notes "Instalador NSIS x64 de X21 Music pre-alpha $version. El resumen de cambios está en «Acerca de»."
+            "release/X21 Music Setup $version.exe.sha256" `
+            --title "$titulo" `
+            --notes "Instalador NSIS x64 de X21 Music $titulo. El detalle de cambios está en CHANGELOG.md y en «Acerca de»."

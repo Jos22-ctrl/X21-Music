@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Check, Copy, Download, ExternalLink, RefreshCw } from 'lucide-react'
-import { APP_VERSION } from '../lib/version'
+import { APP_VERSION, formatVersion } from '../lib/version'
 
 export function UpdateSection() {
   const [info, setInfo] = useState<UpdateInfo | null>(null)
@@ -70,7 +70,9 @@ export function UpdateSection() {
           <strong>
             <RefreshCw size={14} /> Buscar actualizaciones
           </strong>
-          <small>Versión instalada: {info?.currentVersion ?? APP_VERSION}.</small>
+          <small>
+            Versión instalada: {formatVersion(info?.currentVersion ?? APP_VERSION)}.
+          </small>
         </div>
         <div className="update-actions">
           <button
@@ -88,6 +90,23 @@ export function UpdateSection() {
         <p className="update-message">
           <Check size={14} />{' '}
           {info.message ?? `Ya tienes la última versión (${info.currentVersion}).`}
+        </p>
+      )}
+
+      {info?.obsoleteRelease && (
+        <p className="update-message">
+          {formatVersion(info.obsoleteRelease.version, 'F')} está marcada como obsoleta en GitHub;
+          no impide buscar ni instalar esta actualización.
+          {info.obsoleteRelease.url && (
+            <a
+              className="update-link"
+              href={info.obsoleteRelease.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <ExternalLink size={13} /> Ver aviso
+            </a>
+          )}
         </p>
       )}
 

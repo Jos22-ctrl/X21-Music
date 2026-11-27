@@ -7,14 +7,24 @@ function read(relative: string): string {
   return readFileSync(resolve(process.cwd(), relative), 'utf8')
 }
 
-describe('configuración de la versión 0.9.14', () => {
-  it('mantiene la misma versión en todos los archivos', () => {
+describe('configuración de la versión 1.0.0A', () => {
+  it('mantiene el número solo en package.json y el lockfile', () => {
     const pkg = JSON.parse(read('package.json')) as { version: string }
     const lock = JSON.parse(read('package-lock.json')) as { version: string }
-    expect(pkg.version).toBe('0.9.14')
-    expect(lock.version).toBe('0.9.14')
-    expect(read('src/lib/version.ts')).toContain("'0.9.14'")
-    expect(read('index.html')).toContain('pre-alpha 0.9.14')
+    expect(pkg.version).toBe('1.0.0')
+    expect(lock.version).toBe('1.0.0')
+    expect(read('src/lib/release.ts')).toContain('packageInfo.version')
+    expect(read('src/lib/release.ts')).not.toMatch(/'\d+\.\d+\.\d+'/)
+    expect(read('src/lib/version.ts')).toContain("export * from './release'")
+    expect(read('index.html')).toContain('Alpha 1.0.0A')
+  })
+
+  it('documenta las reglas y el registro de cambios', () => {
+    expect(existsSync(resolve(process.cwd(), 'docs/VERSIONES.md'))).toBe(true)
+    expect(read('docs/VERSIONES.md')).toContain('Versión obsoleta')
+    const changelog = read('CHANGELOG.md')
+    expect(changelog).toContain('## [1.0.0A] - 2026-11-26 — Menos memoria, animaciones y versión Alpha')
+    expect(changelog).toContain('## [0.9.14]')
   })
 
   it('deja una sola configuración de empaquetado', () => {
@@ -62,11 +72,15 @@ describe('configuración de la versión 0.9.14', () => {
     expect(release).toContain("- 'v*'")
     expect(release).toContain('Get-FileHash')
     expect(release).toContain('gh release create')
+    expect(release).toContain('$version.exe.sha256')
+    expect(release).toContain('steps.nota.outputs.letra')
+    expect(release).toContain('steps.nota.outputs.descripcion')
+    expect(release).toContain('Alpha $version')
   })
 
   it('muestra las novedades y los créditos en «Acerca de»', () => {
     const about = read('src/components/SettingsDialog.tsx')
-    expect(about).toContain('Novedades de 0.9.14')
+    expect(about).toContain('Novedades de 1.0.0A')
     expect(about).toContain('Claude y X21')
   })
 })

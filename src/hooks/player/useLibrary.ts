@@ -1,10 +1,12 @@
-import { useCallback, useEffect } from 'react'
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
+import { chunk, mapWithConcurrency, shouldReportProgress, yieldToBrowser } from '../../lib/batch'
+import { shrinkCover } from '../../lib/coverThumbnail'
 import {
   deleteTrack,
   loadSettings,
   loadTracks,
-  saveTrack,
+  saveTracks,
 } from '../../lib/db'
 import {
   fileHash,
@@ -12,7 +14,8 @@ import {
   legacyFingerprint,
   resolveImportIdentity,
 } from '../../lib/fingerprint'
-import { computeWaveform, readAudioMetadata } from '../../lib/metadata'
+import { DEFAULT_PALETTE } from '../../lib/color'
+import { fallbackWaveform, readAudioMetadata } from '../../lib/metadata'
 import { clampPersistedTime } from '../../lib/persistence'
 import { reconcileQueue } from '../../lib/queue'
 import {
@@ -26,23 +29,28 @@ import {
   trashMusicFiles,
 } from '../../lib/musicFolder'
 import { extractPaletteFromBlob } from '../../lib/palette'
+import { registerTrackBlobs, releaseTrack } from '../../lib/trackUrls'
 import { clampVolume, normalizeSettings } from './settings'
 import type { PlaybackSettings, RepeatMode, StoredTrack, Track } from '../../types'
 
+/** Tamaño del lote de escritura en IndexedDB. */
+const IMPORT_BATCH_SIZE = 20
+
 /** Estado compartido con el provider; los setters son los de useState. */
 export interface LibraryDeps {
-  urlsRef: MutableRefObject<string[]>
-  latestRef: MutableRefObject<{
-    tracks: Track[]
-    currentId: string | null
-    queueIds: string[]
-    repeatMode: RepeatMode
-    isShuffle: boolean
-    isPlaying: boolean
-  }>
-  settingsRef: MutableRefObject<PlaybackSettings>
-  restoredTimeRef: MutableRefObject<number | null>
-  positionRef: MutableRefObject<number>
+  latestRef: {
+    current: {
+      tracks: Track[]
+      currentId: string | null
+      queueIds: string[]
+      repeatMode: RepeatMode
+      isShuffle: boolean
+      isPlaying: boolean
+    }
+  }
+  settingsRef: { current: PlaybackSettings }
+  restoredTimeRef: { current: number | null }
+  positionRef: { current: number }
   setTracks: Dispatch<SetStateAction<Track[]>>
   setSettings: Dispatch<SetStateAction<PlaybackSettings>>
   setVolumeState: Dispatch<SetStateAction<number>>
@@ -62,7 +70,6 @@ export interface LibraryDeps {
 /** Hidratación, importación y copia de la biblioteca guardada en IndexedDB. */
 export function useLibrary(deps: LibraryDeps) {
   const {
-    urlsRef,
     latestRef,
     settingsRef,
     restoredTimeRef,
@@ -83,11 +90,15 @@ export function useLibrary(deps: LibraryDeps) {
     setError,
   } = deps
 
+  const importAbortRef = useRef<AbortController | null>(null)
+  useEffect(() => () => importAbortRef.current?.abort(), [])
+
+  /**
+   * Registra los blobs y deja las URLs sin crear: el audio se abre solo para la
+   * pista actual/siguiente y la portada solo cuando su fila entra en pantalla.
+   */
   const makeView = useCallback((record: StoredTrack): Track => {
-    const audioUrl = URL.createObjectURL(record.fileBlob)
-    urlsRef.current.push(audioUrl)
-    const coverUrl = record.coverBlob ? URL.createObjectURL(record.coverBlob) : null
-    if (coverUrl) urlsRef.current.push(coverUrl)
+    registerTrackBlobs(record.id, record.fileBlob, record.coverBlob)
     return {
       id: record.id,
       title: record.title,
@@ -99,12 +110,13 @@ export function useLibrary(deps: LibraryDeps) {
       mimeType: record.mimeType,
       palette: record.palette,
       waveform: record.waveform,
+      waveformReal: record.waveformReal,
       addedAt: record.addedAt,
       fileSize: record.fileBlob?.size ?? 0,
-      audioUrl,
-      coverUrl,
+      audioUrl: '',
+      coverUrl: null,
     }
-  }, [urlsRef])
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -161,6 +173,8 @@ export function useLibrary(deps: LibraryDeps) {
         return
       }
 
+      const controller = new AbortController()
+      importAbortRef.current = controller
       setIsImporting(true)
       setError(null)
       const collected = [...latestRef.current.tracks]
@@ -171,82 +185,110 @@ export function useLibrary(deps: LibraryDeps) {
         `${title}|${artist}|${album}`.trim().toLowerCase()
       let moveFailed = false
       let identityCollision = false
+      let processed = 0
+      let lastProgressAt: number | null = null
 
       try {
-        for (let i = 0; i < audioFiles.length; i++) {
-          setImportProgress({ current: i + 1, total: audioFiles.length })
-          const file = audioFiles[i]
-          // SHA-256 evita las colisiones del huésped de 32 bits; el ID antiguo sigue contando.
-          const hash = await fileHash(file)
-          const resolution = resolveImportIdentity(
-            { id: hash.slice(0, 32), hash, legacyId: legacyFingerprint(file) },
-            collected,
-          )
-          if (resolution.status === 'duplicate') continue
-          if (resolution.status === 'collision') identityCollision = true
-          const id = resolution.id
-
-          // Una sola lectura: los bytes se reutilizan para la forma de onda.
-          const sourcePath = sourcePathOf(file)
-          let stableFile = file
-          let bytes: ArrayBuffer | null = null
-          try {
-            bytes = await file.arrayBuffer()
-            stableFile = new File([bytes], file.name, { type: file.type || 'audio/mpeg' })
-          } catch {
-            bytes = null
-            stableFile = file
-          }
-
-          const metadata = await readAudioMetadata(stableFile)
-          if (
-            preferUnique &&
-            collected.some((track) => metaKey(track.title, track.artist, track.album) === metaKey(metadata.title, metadata.artist, metadata.album))
-          ) {
-            continue
-          }
-
-          const waveform = await computeWaveform(stableFile, {
-            bytes,
-            durationMs: metadata.durationMs,
-          })
-          const paletteForTrack = await extractPaletteFromBlob(metadata.coverBlob)
-
-          let filePath: string | null = null
-          let fileName = stableFile.name
-          if (sourcePath) {
-            const [destination] = shouldMove
-              ? await moveFilesToMusicFolder([sourcePath])
-              : await copyFilesToMusicFolder([sourcePath])
-            if (destination) {
-              filePath = destination
-              fileName = baseName(destination)
-            } else {
-              moveFailed = true
+        for (const batch of chunk(audioFiles, IMPORT_BATCH_SIZE)) {
+          if (controller.signal.aborted) break
+          const pending: StoredTrack[] = []
+          const processedBatch = await mapWithConcurrency(batch, 2, async (file) => {
+            processed += 1
+            const now = Date.now()
+            if (shouldReportProgress(now, lastProgressAt)) {
+              lastProgressAt = now
+              setImportProgress({ current: processed, total: audioFiles.length })
             }
-          }
+            // Cede el hilo antes de tocar el archivo: la ventana sigue respondiendo.
+            await yieldToBrowser()
+            if (controller.signal.aborted) return null
 
-          const record: StoredTrack = {
-            id,
-            title: metadata.title,
-            artist: metadata.artist,
-            album: metadata.album,
-            durationMs: metadata.durationMs,
-            fileName,
-            filePath,
-            contentHash: resolution.hash,
-            mimeType: stableFile.type || 'audio/mpeg',
-            fileBlob: stableFile,
-            coverBlob: metadata.coverBlob,
-            palette: paletteForTrack,
-            waveform,
-            addedAt: Date.now() + i,
+            const hash = await fileHash(file)
+            if (controller.signal.aborted) return null
+            const resolution = resolveImportIdentity(
+              { id: hash.slice(0, 32), hash, legacyId: legacyFingerprint(file) },
+              [...collected, ...pending],
+            )
+            if (resolution.status === 'duplicate') return null
+            if (resolution.status === 'collision') identityCollision = true
+            const id = resolution.id
+
+            let stableFile: File | null = null
+            try {
+              stableFile = new File([await file.arrayBuffer()], file.name, {
+                type: file.type || 'audio/mpeg',
+              })
+            } catch {
+              stableFile = file
+            }
+            const readable = stableFile ?? file
+            const metadata = await readAudioMetadata(readable)
+            if (controller.signal.aborted) return null
+            if (
+              preferUnique &&
+              [...collected, ...pending].some(
+                (track) =>
+                  metaKey(track.title, track.artist, track.album) ===
+                  metaKey(metadata.title, metadata.artist, metadata.album),
+              )
+            ) {
+              return null
+            }
+            // Sin awaits entre comprobación y reserva: dos pistas iguales no se solapan.
+            if (pending.some((track) => track.id === id)) return null
+            const record: StoredTrack = {
+              id,
+              title: metadata.title,
+              artist: metadata.artist,
+              album: metadata.album,
+              durationMs: metadata.durationMs,
+              fileName: readable.name,
+              filePath: null,
+              contentHash: resolution.hash,
+              mimeType: readable.type || 'audio/mpeg',
+              fileBlob: readable,
+              coverBlob: null,
+              palette: { ...DEFAULT_PALETTE },
+              // La onda real se calcula en tiempo de inactividad al reproducir.
+              waveform: fallbackWaveform(readable.name, 80),
+              waveformReal: false,
+              addedAt: Date.now() + processed,
+            }
+            pending.push(record)
+
+            const sourcePath = sourcePathOf(file)
+            let filePath: string | null = null
+            let fileName = readable.name
+            if (sourcePath) {
+              const [destination] = shouldMove
+                ? await moveFilesToMusicFolder([sourcePath])
+                : await copyFilesToMusicFolder([sourcePath])
+              if (destination) {
+                filePath = destination
+                fileName = baseName(destination)
+              } else {
+                moveFailed = true
+              }
+            }
+            record.filePath = filePath
+            record.fileName = fileName
+
+            // Solo portadas nuevas: se reduce la miniatura antes de guardarla.
+            record.coverBlob = await shrinkCover(metadata.coverBlob)
+            record.palette = await extractPaletteFromBlob(record.coverBlob)
+            return controller.signal.aborted ? null : record
+          })
+
+          const accepted = processedBatch.filter((record): record is StoredTrack => Boolean(record))
+          if (accepted.length) {
+            // Una transacción y un único setState por lote.
+            await saveTracks(accepted)
+            const views = accepted.map(makeView)
+            collected.push(...views)
+            importedIds.push(...accepted.map((record) => record.id))
+            setTracks((previous) => [...previous, ...views])
           }
-          await saveTrack(record)
-          const view = makeView(record)
-          collected.push(view)
-          importedIds.push(id)
-          setTracks([...collected])
+          await yieldToBrowser()
         }
 
         const issues: string[] = []
@@ -271,48 +313,55 @@ export function useLibrary(deps: LibraryDeps) {
       } catch {
         setError('No se pudieron importar algunos archivos.')
       } finally {
+        importAbortRef.current = null
         setIsImporting(false)
         setImportProgress(null)
       }
     },
-    [latestRef, makeView, setCurrentId, setError, setImportProgress, setIsImporting, setQueueIds, setTracks],
+    [latestRef, makeView, setCurrentId, setError, setImportProgress, setIsImporting, setQueueIds, setSettings, setTracks],
   )
 
-  const removeTrack = useCallback(async (id: string): Promise<void> => {
-    const removed = latestRef.current.tracks.find((track) => track.id === id)
-    const remaining = latestRef.current.tracks.filter((track) => track.id !== id)
-    await deleteTrack(id)
-    // REQUIERE PRUEBA MANUAL EN WINDOWS: confirmar que la papelera recibe el archivo.
-    if (settingsRef.current.moveOriginals && removed?.filePath) {
-      await trashMusicFiles([removed.filePath])
-    }
-    setTracks(remaining)
-    setQueueIds((previous) => previous.filter((queued) => queued !== id))
-    if (latestRef.current.currentId === id) {
-      setCurrentId(remaining[0]?.id ?? null)
-      setCurrentTime(0)
-    }
-    if (removed) {
-      const obsolete = new Set([removed.audioUrl, removed.coverUrl].filter(Boolean) as string[])
-      urlsRef.current = urlsRef.current.filter((url) => !obsolete.has(url))
-      obsolete.forEach((url) => URL.revokeObjectURL(url))
-    }
-  }, [latestRef, setCurrentId, setCurrentTime, setQueueIds, setTracks, settingsRef, urlsRef])
+  const removeTrack = useCallback(
+    async (id: string): Promise<void> => {
+      const removed = latestRef.current.tracks.find((track) => track.id === id)
+      const remaining = latestRef.current.tracks.filter((track) => track.id !== id)
+      await deleteTrack(id)
+      // REQUIERE PRUEBA MANUAL EN WINDOWS: confirmar que la papelera recibe el archivo.
+      if (settingsRef.current.moveOriginals && removed?.filePath) {
+        await trashMusicFiles([removed.filePath])
+      }
+      setTracks(remaining)
+      setQueueIds((previous) => previous.filter((queued) => queued !== id))
+      if (latestRef.current.currentId === id) {
+        setCurrentId(remaining[0]?.id ?? null)
+        setCurrentTime(0)
+      }
+      releaseTrack(id)
+    },
+    [latestRef, setCurrentId, setCurrentTime, setQueueIds, setTracks, settingsRef],
+  )
 
   /** Escribe en la carpeta de usuario todas las canciones ya guardadas en IndexedDB. */
   const copyLibraryToFolder = useCallback(async (): Promise<number> => {
     const records = await loadTracks()
     const saved = new Map<string, { filePath: string; fileName: string }>()
+    const updated: StoredTrack[] = []
 
-    for (const record of records) {
-      try {
-        const data = await record.fileBlob.arrayBuffer()
-        const filePath = await saveFileToMusicFolder(record.fileName, data)
-        if (!filePath) continue
-        await saveTrack({ ...record, filePath })
-        saved.set(record.id, { filePath, fileName: baseName(filePath) })
-      } catch {
-        // Una pista problemática no detiene el resto.
+    for (const batch of chunk(records, IMPORT_BATCH_SIZE)) {
+      for (const record of batch) {
+        try {
+          const data = await record.fileBlob.arrayBuffer()
+          const filePath = await saveFileToMusicFolder(record.fileName, data)
+          if (!filePath) continue
+          updated.push({ ...record, filePath })
+          saved.set(record.id, { filePath, fileName: baseName(filePath) })
+        } catch {
+          // Una pista problemática no detiene el resto.
+        }
+      }
+      if (updated.length) {
+        await saveTracks(updated.splice(0))
+        await yieldToBrowser()
       }
     }
 

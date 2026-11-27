@@ -19,8 +19,8 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
 - `src/components/*`: islas visuales. `src/index.css` conserva `@import 'tailwindcss'` e importa
   en orden los bloques de `src/styles/`; `src/App.css` importa `app-layout.css` y
   `app-islas.css`. Ese orden define la cascada: no reordenarlo sin comparar el CSS compilado.
-- `electron/`: `main.cjs` crea la ventana; `ipc.cjs` valida el emisor de cada IPC; `music.cjs`
-  implementa `music:*` (crea y usa `C:\Users\<usuario>\X21 Music\Música`) y `updater.cjs`
+- `electron/`: `main.cjs` crea la ventana; `ipc.cjs` valida el emisor de cada IPC leyendo
+  `senderFrame.url` como propiedad (Electron 45); `music.cjs` implementa `music:*` (crea y usa `C:\Users\<usuario>\X21 Music\Música`) y `updater.cjs`
   implementa `update:*` (clave de un solo uso, descarga y verificación). `electron/update.cjs`
   compara versiones y valida los releases de GitHub (instalador y `.sha256`).
   `electron/paths.cjs`, `electron/security.cjs` y `electron/preload.cjs` completan el puente.
@@ -134,7 +134,7 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
   clave (solo actualizar) → directorio → instalación. `customWelcomePage` inserta la página de
   modo propia de electron-builder en ese punto y define `INSTALL_MODE_PER_ALL_USERS` para que no
   se duplique; `customInstallmode` fija el modo cuando ya se abrió como administrador.
-  Versión `pre-alpha 0.9.13` en `src/lib/version.ts`, `package.json`, `index.html` y el lockfile;
+  Versión `pre-alpha 0.9.14` en `src/lib/version.ts`, `package.json`, `index.html` y el lockfile;
   «Acerca de» muestra las novedades y acredita a Claude y X21. Solo hay una configuración de
   empaquetado (`electron-builder.yml`). `.github/workflows/ci.yml` valida cada cambio y
   `.github/workflows/release.yml` publica el instalador y su `.sha256` al etiquetar `vX.Y.Z`.

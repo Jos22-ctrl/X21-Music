@@ -450,6 +450,13 @@ export function SettingsDialog({ tab, onTabChange, onClose }: SettingsDialogProp
                 <Check size={13} /> Música en tu carpeta de Users y ajustes legibles
               </li>
             </ul>
+            <h3>Novedades de 0.9.14</h3>
+            <ul className="about__list">
+              <li>
+                <Check size={13} /> Corregido el fallo que impedía consultar GitHub desde el botón
+                de actualizaciones
+              </li>
+            </ul>
             <h3>Novedades de 0.9.13</h3>
             <ul className="about__list">
               <li>

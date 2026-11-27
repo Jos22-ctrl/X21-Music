@@ -296,6 +296,20 @@ export function SettingsDialog({ tab, onTabChange, onClose }: SettingsDialogProp
                   label="Modo de bajo rendimiento"
                 />
               </div>
+              <div className="setting-row">
+                <div className="setting-row__info">
+                  <strong>Reducir animaciones</strong>
+                  <small>
+                    Detiene las entradas, la respiración del botón de reproducción y el ecualizador.
+                    Se guarda en este equipo y respeta la preferencia de Windows.
+                  </small>
+                </div>
+                <Toggle
+                  checked={settings.reduceMotion}
+                  onChange={(value) => updateSettings({ reduceMotion: value })}
+                  label="Reducir animaciones"
+                />
+              </div>
             </section>
 
             <section className="settings-section">

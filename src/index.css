@@ -9,6 +9,7 @@
 @import './styles/actualizaciones.css';
 @import './styles/songs.css';
 @import './styles/accesibilidad.css';
+@import './styles/motion.css';
 
 /* El sprite de Vite eliminado generaba esta utilidad; se conserva para no alterar el CSS. */
 @source inline("filter");

@@ -13,6 +13,7 @@ describe('ajustes del reproductor', () => {
     expect(normalizeSettings()).toEqual(DEFAULT_SETTINGS)
     expect(normalizeSettings({ playbackBarStyle: 'clasico' }).playbackBarStyle).toBe('clasico')
     expect(normalizeSettings({ playbackBarStyle: 'otro' }).playbackBarStyle).toBe('simple')
+    expect(normalizeSettings({ reduceMotion: true }).reduceMotion).toBe(true)
   })
 
   it('acota los segundos de fundido y conserva el layout reparado', () => {

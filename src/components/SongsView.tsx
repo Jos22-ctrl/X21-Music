@@ -6,6 +6,7 @@ import { useVirtualList } from '../hooks/useVirtualList'
 import { formatTime } from '../lib/format'
 import { pageSizeFor } from '../lib/performance'
 import type { Track } from '../types'
+import { EqualizerBars } from './EqualizerBars'
 import { MarqueeText } from './MarqueeText'
 
 type Filter = 'recent' | 'all'
@@ -21,11 +22,19 @@ interface SongRowProps {
   track: Track
   index: number
   isCurrent: boolean
+  isPlaying: boolean
   onPlay: (id: string) => void
   onEnqueue: (id: string) => void
 }
 
-const SongRow = memo(function SongRow({ track, index, isCurrent, onPlay, onEnqueue }: SongRowProps) {
+const SongRow = memo(function SongRow({
+  track,
+  index,
+  isCurrent,
+  isPlaying,
+  onPlay,
+  onEnqueue,
+}: SongRowProps) {
   const coverUrl = useCoverUrl(track)
   return (
     <div className={`song-row ${isCurrent ? 'is-current' : ''}`}>
@@ -39,6 +48,7 @@ const SongRow = memo(function SongRow({ track, index, isCurrent, onPlay, onEnque
         <Play size={13} fill="currentColor" className="song-row__play-icon" />
       </button>
       <div className="song-row__main">
+        {isCurrent && isPlaying && <EqualizerBars />}
         <span className="song-row__thumb">
           {coverUrl ? (
             <img src={coverUrl} alt="" loading="lazy" decoding="async" />
@@ -78,6 +88,7 @@ export function SongsView() {
   const {
     tracks,
     currentTrack,
+    isPlaying,
     isImporting,
     importProgress,
     importFiles,
@@ -220,6 +231,7 @@ export function SongsView() {
                   track={track}
                   index={virtual.start + offset}
                   isCurrent={currentTrack?.id === track.id}
+                  isPlaying={isPlaying}
                   onPlay={playTrack}
                   onEnqueue={enqueue}
                 />

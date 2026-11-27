@@ -12,10 +12,12 @@ export function CoverIsland() {
 
   const hasCover = Boolean(currentTrack?.coverUrl) && !imageFailed
 
+  // REQUIERE PRUEBA MANUAL EN WINDOWS: el fundido se reinicia al cambiar de pista.
   return (
     <section className="island cover-island" aria-label="Portada de la canción actual">
       {hasCover ? (
         <img
+          key={currentTrack?.id ?? 'sin-portada'}
           className="cover-island__img"
           src={currentTrack?.coverUrl ?? undefined}
           alt={`Portada de ${currentTrack?.album || currentTrack?.title || 'la canción'}`}

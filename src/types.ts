@@ -55,6 +55,8 @@ export interface PlaybackSettings {
   playbackBarStyle: PlaybackBarStyle
   /** Reduce animaciones, desenfoques y cantidad de elementos dibujados. */
   lowPerformance: boolean
+  /** Ajuste persistente para detener las animaciones de entrada y los bucles. */
+  reduceMotion: boolean
 }
 
 export interface PersistedSettings {

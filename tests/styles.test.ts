@@ -24,7 +24,25 @@ describe('hojas de estilo partidas', () => {
       'actualizaciones',
       'songs',
       'accesibilidad',
+      'motion',
     ])
+  })
+
+  it('define los tokens de movimiento y las dos únicas animaciones infinitas', () => {
+    const css = read('src/styles/motion.css')
+    for (const token of [
+      '--ease-out:',
+      '--ease-spring:',
+      '--dur-fast: 140ms',
+      '--dur-med: 260ms',
+      '--dur-slow: 480ms',
+    ]) {
+      expect(css).toContain(token)
+    }
+    expect(css.match(/infinite/g)).toHaveLength(2)
+    expect(css).toContain(":root[data-motion='reduced']")
+    expect(css).toContain('@media (prefers-reduced-motion: reduce)')
+    expect(css).toContain('@supports (animation-timeline: view())')
   })
 
   it('deja los estilos de la aplicación en su propio módulo', () => {

@@ -6,6 +6,7 @@ import { usePlayer } from '../hooks/usePlayer'
 import { formatTime } from '../lib/format'
 import { pageSizeFor } from '../lib/performance'
 import type { Track } from '../types'
+import { EqualizerBars } from './EqualizerBars'
 import { MarqueeText } from './MarqueeText'
 
 /** 44 px de fila + 5 px de separación, según biblioteca.css. */
@@ -14,6 +15,7 @@ const ROW_HEIGHT = 49
 interface LibraryRowProps {
   track: Track
   isCurrent: boolean
+  isPlaying: boolean
   onPlay: (id: string) => void
   onEnqueue: (id: string) => void
   onRemove: (id: string) => Promise<void>
@@ -22,6 +24,7 @@ interface LibraryRowProps {
 const LibraryRow = memo(function LibraryRow({
   track,
   isCurrent,
+  isPlaying,
   onPlay,
   onEnqueue,
   onRemove,
@@ -42,6 +45,7 @@ const LibraryRow = memo(function LibraryRow({
             <Music size={15} />
           )}
         </span>
+        {isCurrent && isPlaying && <EqualizerBars />}
         <span className="track-row__text">
           <strong>
             <MarqueeText>{track.title}</MarqueeText>
@@ -79,6 +83,7 @@ export function LibraryIsland() {
     tracks,
     queue,
     currentTrack,
+    isPlaying,
     isImporting,
     importProgress,
     importFiles,
@@ -211,6 +216,7 @@ export function LibraryIsland() {
                 key={track.id}
                 track={track}
                 isCurrent={currentTrack?.id === track.id}
+                isPlaying={isPlaying}
                 onPlay={playTrack}
                 onEnqueue={enqueue}
                 onRemove={removeTrack}

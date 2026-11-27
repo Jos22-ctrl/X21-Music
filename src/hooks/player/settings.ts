@@ -12,6 +12,7 @@ export const DEFAULT_SETTINGS: PlaybackSettings = {
   islandLayout: DEFAULT_ISLAND_LAYOUT,
   playbackBarStyle: 'simple',
   lowPerformance: false,
+  reduceMotion: false,
 }
 
 export const clampVolume = clampPersistedVolume
@@ -29,5 +30,6 @@ export function normalizeSettings(value?: Partial<PlaybackSettings>): PlaybackSe
     islandLayout: normalizeIslandLayout(value?.islandLayout),
     playbackBarStyle: value?.playbackBarStyle === 'clasico' ? 'clasico' : 'simple',
     lowPerformance: value?.lowPerformance ?? DEFAULT_SETTINGS.lowPerformance,
+    reduceMotion: value?.reduceMotion ?? DEFAULT_SETTINGS.reduceMotion,
   }
 }

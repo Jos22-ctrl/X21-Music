@@ -16,6 +16,8 @@ declare global {
     /** Estado de la consulta cuando no hay actualización o falla GitHub. */
     error?: string
     message?: string
+    /** Versión marcada como F en GitHub; solo informativa, nunca bloquea. */
+    obsoleteRelease?: { version: string; letter: 'F'; url: string }
   }
 
   interface ElectronAPI {

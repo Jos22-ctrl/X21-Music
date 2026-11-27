@@ -1,7 +1,7 @@
 {
   "name": "x21-music",
   "private": true,
-  "version": "0.9.14",
+  "version": "1.0.0",
   "description": "X21 Music — reproductor de música local para Windows con interfaz teñida por la portada",
   "type": "module",
   "main": "electron/main.cjs",
@@ -15,6 +15,7 @@
     "test:watch": "vitest",
     "preview": "vite preview",
     "electron": "electron .",
+    "version:bump": "node scripts/bump-version.mjs",
     "dist:win": "npm run build && electron-builder --win --x64 --publish never"
   },
   "devDependencies": {

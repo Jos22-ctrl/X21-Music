@@ -18,7 +18,10 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
   `usePlayer()`/`PlayerContextValue` no cambia.
 - `src/components/*`: islas visuales. `src/index.css` conserva `@import 'tailwindcss'` e importa
   en orden los bloques de `src/styles/`; `src/App.css` importa `app-layout.css` y
-  `app-islas.css`. Ese orden define la cascada: no reordenarlo sin comparar el CSS compilado.
+  `app-islas.css`. `src/styles/motion.css` se importa **el último** y añade animaciones sin
+  reemplazar el diseño. Ese orden define la cascada: no reordenarlo sin comparar el CSS compilado.
+- `src/lib/release.ts`: etapa, letra y `formatVersion`; el número sale solo de `package.json`.
+  `scripts/bump-version.mjs` sube X/Y/Z sin letras; las reglas están en `docs/VERSIONES.md`.
 - `electron/`: `main.cjs` crea la ventana; `ipc.cjs` valida el emisor de cada IPC leyendo
   `senderFrame.url` como propiedad (Electron 45); `music.cjs` implementa `music:*` (crea y usa `C:\Users\<usuario>\X21 Music\Música`) y `updater.cjs`
   implementa `update:*` (clave de un solo uso, descarga y verificación). `electron/update.cjs`
@@ -67,9 +70,10 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
   `skipSilence` (sin pausa fija de 400 ms), `preventDuplicates`, `monoDark`,
   `marqueeTitles` (false por defecto: una línea con elipsis; true: desplazamiento si no cabe),
   `playbackBarStyle` (`simple` por defecto; `clasico` recupera la barra de controles anterior),
-  `islandLayout` (isla por ranura; se reordena con Ctrl + arrastrar en ambos diseños) y
+  `islandLayout` (isla por ranura; se reordena con Ctrl + arrastrar en ambos diseños),
   `lowPerformance` (false por defecto: sin desenfoques/animaciones, forma de onda reducida y
-  biblioteca paginada).
+  biblioteca paginada) y `reduceMotion` (false por defecto; fija `data-motion="reduced"` y detiene
+  los bucles animados).
 - Al importar se toma una copia en memoria del `File`, se leen metadatos/forma de onda y se
   **copia** el archivo a la carpeta de música de Users; el original se conserva. Solo con
   `moveOriginals` (false por defecto) se mueve; al eliminar esa canción se envía a la papelera.
@@ -134,10 +138,12 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
   clave (solo actualizar) → directorio → instalación. `customWelcomePage` inserta la página de
   modo propia de electron-builder en ese punto y define `INSTALL_MODE_PER_ALL_USERS` para que no
   se duplique; `customInstallmode` fija el modo cuando ya se abrió como administrador.
-  Versión `pre-alpha 0.9.14` en `src/lib/version.ts`, `package.json`, `index.html` y el lockfile;
+  Versión `Alpha 1.0.0A` en la interfaz, con `X.Y.Z` solo en `package.json` y el lockfile;
   «Acerca de» muestra las novedades y acredita a Claude y X21. Solo hay una configuración de
   empaquetado (`electron-builder.yml`). `.github/workflows/ci.yml` valida cada cambio y
-  `.github/workflows/release.yml` publica el instalador y su `.sha256` al etiquetar `vX.Y.Z`.
+  `.github/workflows/release.yml` publica el instalador y su `.exe.sha256` al etiquetar `vX.Y.Z`,
+  con título `Alpha X.Y.ZL — descripción corta`. Las reglas de letras, la marca `F` y el cambio de
+  número están en `docs/VERSIONES.md` y `CHANGELOG.md`.
 - `monoDark` sustituye la paleta por `MONO_PALETTE` y desactiva la imagen de fondo.
 
 ## 5. Paleta desde la portada (reemplaza "Color de acento extraído de la portada")

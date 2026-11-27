@@ -60,7 +60,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $version = "${{ github.ref_name }}".TrimStart('v')
-          $titulo = "Alpha $version${{ steps.nota.outputs.letra }} — ${{ steps.nota.outputs.descripcion }}"
+          $letra = "${{ steps.nota.outputs.letra }}"
+          $descripcion = "${{ steps.nota.outputs.descripcion }}"
+          $titulo = "Alpha $version$letra — $descripcion"
           gh release create "${{ github.ref_name }}" `
             "release/X21 Music Setup $version.exe" `
             "release/X21 Music Setup $version.exe.sha256" `

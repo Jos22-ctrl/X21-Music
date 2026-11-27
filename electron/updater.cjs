@@ -12,7 +12,34 @@ const {
 const GITHUB_REPO = 'Jos22-ctrl/X21-Music'
 const MAX_INSTALLER_BYTES = 200 * 1024 ** 2
 const MAX_CHECKSUM_BYTES = 64 * 1024
+const CHECK_TIMEOUT_MS = 15_000
 const DOWNLOAD_TIMEOUT_MS = 60_000
+
+/**
+ * En Electron se usa net.fetch: respeta la configuración de red de Windows (proxy incluido).
+ * Fuera de Electron (pruebas unitarias) se mantiene el fetch de Node.
+ */
+function networkFetch(url, options) {
+  try {
+    const electron = require('electron')
+    if (typeof electron?.net?.fetch === 'function') return electron.net.fetch(url, options)
+  } catch {
+    // En las pruebas `electron` es solo la ruta al ejecutable, no un módulo con API.
+  }
+  return fetch(url, options)
+}
+
+/** Convierte un fallo de red en un detalle corto y seguro para mostrar en la interfaz. */
+function describeFetchError(error) {
+  const message = String(error?.message || error || '')
+  if (error?.name === 'TimeoutError' || /timeout|abort/i.test(message)) {
+    return ' (tiempo de espera agotado)'
+  }
+  const code = error?.cause?.code || error?.code
+  if (typeof code === 'string' && /^[A-Za-z0-9_]+$/.test(code)) return ` (${code})`
+  const netError = message.match(/net::[A-Z_]+/)
+  return netError ? ` (${netError[0]})` : ''
+}
 
 /** Clave entregada a la interfaz en la última comprobación; se consume al instalar. */
 let pendingUpdate = null
@@ -28,7 +55,7 @@ function makeUpdateKey() {
 
 /** Descarga por partes con límite de tamaño y timeout; devuelve el SHA-256. */
 async function downloadWithHash(url, destination, maxBytes) {
-  const response = await fetch(url, {
+  const response = await networkFetch(url, {
     headers: { 'User-Agent': 'X21-Music' },
     signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
   })
@@ -76,24 +103,34 @@ async function fileSha256(filePath) {
 
 /** Consulta solo releases de GitHub; nunca usa archivos locales. */
 async function checkGitHubUpdates(currentVersion) {
+  const unavailable = (error) => ({ available: false, currentVersion, source: 'github', error })
   try {
-    const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
+    const response = await networkFetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
       headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'X21-Music' },
+      signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
     })
-    if (!response.ok) {
-      return { available: false, currentVersion, source: 'github', error: `GitHub respondió ${response.status}.` }
+    if (!response.ok) return unavailable(`GitHub respondió ${response.status}.`)
+
+    let release
+    try {
+      release = await response.json()
+    } catch {
+      return unavailable('GitHub devolvió una respuesta inesperada.')
     }
-    const release = await response.json()
+
     const info = normalizeGitHubRelease(release, currentVersion)
     if (!info.available && !isNewerVersion(release?.tag_name, currentVersion)) {
       return { ...info, message: 'Ya tienes la última versión publicada en GitHub.' }
     }
     if (!info.available) {
-      return { ...info, error: 'El último release de GitHub no trae un instalador verificable.' }
+      return unavailable('El último release de GitHub no trae un instalador verificable.')
     }
     return info
-  } catch {
-    return { available: false, currentVersion, source: 'github', error: 'No se pudo conectar con GitHub.' }
+  } catch (error) {
+    const detalle = describeFetchError(error)
+    return unavailable(
+      `No se pudo conectar con GitHub${detalle}. Revisa la conexión, el firewall o el proxy.`,
+    )
   }
 }
 

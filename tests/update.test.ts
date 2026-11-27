@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   isNewerVersion,
   normalizeGitHubRelease,
@@ -7,10 +7,15 @@ import {
   safeDownloadUrl,
   safeInstallerName,
 } from '../electron/update.cjs'
+import { checkGitHubUpdates } from '../electron/updater.cjs'
 
 const HASH = 'a'.repeat(64)
 const url = 'https://github.com/Jos22-ctrl/X21-Music/releases/download/v0.9.7/setup.exe'
 const checksumUrl = `${url}.sha256`
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 function release(overrides: Record<string, unknown> = {}) {
   return {
@@ -80,5 +85,51 @@ describe('actualizaciones desde GitHub', () => {
     expect(parseChecksumFile(HASH, 'setup.exe')).toBe(HASH)
     expect(parseChecksumFile(`${HASH}  otro.exe`, 'setup.exe')).toBe('')
     expect(parseChecksumFile('no es un hash', 'setup.exe')).toBe('')
+  })
+})
+
+describe('fallos de red al buscar actualizaciones', () => {
+  it('indica que ya está al día cuando GitHub responde con la versión instalada', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: true, json: async () => release({ tag_name: 'v0.9.13' }) })),
+    )
+    const info = await checkGitHubUpdates('0.9.13')
+    expect(info.available).toBe(false)
+    expect(info.error).toBeUndefined()
+    expect(info.message).toBe('Ya tienes la última versión publicada en GitHub.')
+  })
+
+  it('muestra el estado HTTP cuando GitHub responde con error', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 403 })))
+    const info = await checkGitHubUpdates('0.9.12')
+    expect(info.error).toBe('GitHub respondió 403.')
+  })
+
+  it('muestra el motivo de un fallo de red sin ocultarlo', async () => {
+    const fallo = Object.assign(new TypeError('fetch failed'), { cause: { code: 'ENOTFOUND' } })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw fallo
+      }),
+    )
+    const info = await checkGitHubUpdates('0.9.12')
+    expect(info.error).toContain('ENOTFOUND')
+    expect(info.error).toContain('Revisa la conexión, el firewall o el proxy.')
+  })
+
+  it('avisa cuando GitHub devuelve una respuesta que no es JSON', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => {
+          throw new Error('<html>')
+        },
+      })),
+    )
+    const info = await checkGitHubUpdates('0.9.12')
+    expect(info.error).toBe('GitHub devolvió una respuesta inesperada.')
   })
 })

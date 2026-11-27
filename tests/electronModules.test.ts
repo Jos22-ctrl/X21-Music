@@ -37,6 +37,8 @@ describe('módulos de Electron', () => {
     }
     expect(updater).toContain('update:check')
     expect(updater).toContain('update:install')
+    // La búsqueda usa la pila de red de Electron para respetar el proxy de Windows.
+    expect(updater).toContain('electron?.net?.fetch')
   })
 
   it('elige un nombre libre sin sobrescribir la canción existente', async () => {

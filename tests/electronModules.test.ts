@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { createTrustedHandle } from '../electron/ipc.cjs'
 import { uniqueDestination } from '../electron/music.cjs'
 import { ensureUpdatesDir, makeUpdateKey } from '../electron/updater.cjs'
 
@@ -39,6 +40,21 @@ describe('módulos de Electron', () => {
     expect(updater).toContain('update:install')
     // La búsqueda usa la pila de red de Electron para respetar el proxy de Windows.
     expect(updater).toContain('electron?.net?.fetch')
+  })
+
+  it('acepta la URL del emisor como propiedad de Electron 45', async () => {
+    let handler: ((event: unknown) => unknown) | undefined
+    const ipcMain = {
+      handle: (_channel: string, fn: (event: unknown) => unknown) => {
+        handler = fn
+      },
+    }
+    const trustedHandle = createTrustedHandle(ipcMain, { isPackaged: true })
+    trustedHandle('update:check', () => 'ok')
+    expect(handler).toBeTypeOf('function')
+    expect(
+      handler?.({ senderFrame: { url: 'file:///C:/app/resources/app.asar/dist/index.html' } }),
+    ).toBe('ok')
   })
 
   it('elige un nombre libre sin sobrescribir la canción existente', async () => {

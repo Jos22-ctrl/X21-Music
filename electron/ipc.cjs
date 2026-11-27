@@ -8,7 +8,8 @@ const frameOptions = (app) => ({ devUrl: DEV_URL, isPackaged: app.isPackaged })
 function createTrustedHandle(ipcMain, app) {
   return function trustedHandle(channel, handler) {
     ipcMain.handle(channel, (event, ...args) => {
-      const frameUrl = event?.senderFrame?.url?.() ?? ''
+      // En Electron 45 `senderFrame.url` es una propiedad, no un método.
+      const frameUrl = String(event?.senderFrame?.url ?? '')
       if (!isAllowedFrameUrl(frameUrl, frameOptions(app))) {
         throw new Error('Solicitud no permitida desde esta página.')
       }

@@ -450,6 +450,17 @@ export function SettingsDialog({ tab, onTabChange, onClose }: SettingsDialogProp
                 <Check size={13} /> Música en tu carpeta de Users y ajustes legibles
               </li>
             </ul>
+            <h3>Novedades de 0.9.13</h3>
+            <ul className="about__list">
+              <li>
+                <Check size={13} /> La búsqueda de actualizaciones usa la red de Electron y muestra
+                el motivo del fallo
+              </li>
+              <li>
+                <Check size={13} /> Distingue entre sin conexión, respuesta de GitHub y versión al
+                día
+              </li>
+            </ul>
             <h3>Novedades de 0.9.12</h3>
             <ul className="about__list">
               <li>

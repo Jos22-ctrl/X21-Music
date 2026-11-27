@@ -1,10 +1,10 @@
-# X21 Music — pre-alpha 0.9.12
+# X21 Music — pre-alpha 0.9.13
 
 Reproductor de música **local para Windows** con **Diseño de Islas** y una interfaz cuyo
 color se deriva por completo de la portada de la canción actual. Todo se procesa en el
 dispositivo: metadatos ID3, portadas, forma de onda, biblioteca y paleta. Sin backend.
 
-**Versión actual: pre-alpha 0.9.12** (también visible en «Acerca de» dentro de la app, junto
+**Versión actual: pre-alpha 0.9.13** (también visible en «Acerca de» dentro de la app, junto
 al resumen de novedades). Proyecto creado por **Claude y X21**.
 
 ## Características
@@ -83,7 +83,7 @@ al resumen de novedades). Proyecto creado por **Claude y X21**.
   detiene la reproducción al terminar.
 - **Vista «Canciones»**: vista completa sin reproductor, con canciones, álbum, artista, fecha
   de incorporación y duración; filtros «Recién agregadas/Todas», búsqueda y ordenación.
-- **Acerca de**: versión `pre-alpha 0.9.12`, resumen de características y novedades de esta
+- **Acerca de**: versión `pre-alpha 0.9.13`, resumen de características y novedades de esta
   versión, con créditos a Claude y X21.
 - **Accesibilidad**: contraste verificado, foco visible, `prefers-reduced-motion` y
   `prefers-reduced-transparency`.
@@ -135,7 +135,7 @@ npm run icons          # iconos PWA derivados de build/icon.png
 npm run dist:win
 ```
 
-Crea `release/X21 Music Setup 0.9.12.exe` (instalador NSIS x64, con acceso directo en
+Crea `release/X21 Music Setup 0.9.13.exe` (instalador NSIS x64, con acceso directo en
 escritorio y menú de inicio). Cierra el reproductor antes de empaquetar o instalar para
 evitar que Windows bloquee el archivo. Para desarrollo rápido, `npm run electron` abre la
 ventana Electron usando el `dist` ya compilado. La única configuración de empaquetado es
@@ -151,9 +151,10 @@ por `file://` y el service worker no se registra.
 ## Actualizaciones
 
 El botón de actualizaciones de la cabecera (y «Ajustes → Actualizaciones») consulta **solo**
-el último release de `Jos22-ctrl/X21-Music` en GitHub. Ya no se busca en carpetas locales ni en
-`update.json`: sin conexión se muestra un error y, si no hay versión mayor, se indica que ya
-estás al día.
+el último release de `Jos22-ctrl/X21-Music` en GitHub. La petición usa `net.fetch` de Electron,
+así que respeta el proxy configurado en Windows, y tiene un timeout de 15 s. Ya no se busca en
+carpetas locales ni en `update.json`: si falla la red se indica el motivo (código, timeout o
+estado HTTP) y, si no hay versión mayor, se confirma que ya estás al día.
 
 Para publicar, crea un release `vX.Y.Z` y sube **dos assets**: el `.exe` y su `.sha256` con el
 formato `<hash>  <nombre.exe>` (sin los dos puntos que añade `certutil`). Un release sin ese

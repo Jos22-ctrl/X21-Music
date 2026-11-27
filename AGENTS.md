@@ -121,9 +121,10 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
 - `src/components/MarqueeText.tsx` mide el texto con `ResizeObserver` y solo lo desplaza si
   no cabe y `marqueeTitles` está activo; con `prefers-reduced-motion` la animación se detiene.
 - Panel con pestañas «Ajustes», «Actualizaciones» y «Acerca de»; botón de actualizaciones en
-  la cabecera. Consulta **solo** `https://api.github.com/repos/Jos22-ctrl/X21-Music/releases/latest`:
-  no hay origen local ni `update.json`. Si falla la red se muestra el error; si no hay versión
-  mayor se indica que ya está al día. Con versión mayor genera una clave de un solo uso
+  la cabecera. Consulta **solo** `https://api.github.com/repos/Jos22-ctrl/X21-Music/releases/latest`
+  con `net.fetch` de Electron (respeta el proxy de Windows) y un timeout de 15 s; no hay origen
+  local ni `update.json`. Si falla la red se muestra el motivo (código, timeout o estado HTTP);
+  si no hay versión mayor se indica que ya está al día. Con versión mayor genera una clave de un solo uso
   `X21-XXXXXXXX`, descarga con límite de 200 MB y timeout de 60 s el instalador y su `.sha256` a
   `%TEMP%\X21 Music Updates`. Solo se lanza si el SHA-256 coincide; un release sin `.sha256` se
   descarta. Se lanza con `/X21KEY=<clave>` `/X21MODE=update`.
@@ -133,9 +134,9 @@ Toda la música se procesa en el dispositivo: no hay backend ni servicios extern
   clave (solo actualizar) → directorio → instalación. `customWelcomePage` inserta la página de
   modo propia de electron-builder en ese punto y define `INSTALL_MODE_PER_ALL_USERS` para que no
   se duplique; `customInstallmode` fija el modo cuando ya se abrió como administrador.
-  Versión `pre-alpha 0.9.12` en `src/lib/version.ts`, `package.json`, `index.html` y el lockfile;
+  Versión `pre-alpha 0.9.13` en `src/lib/version.ts`, `package.json`, `index.html` y el lockfile;
   «Acerca de» muestra las novedades y acredita a Claude y X21. Solo hay una configuración de
-  empaquetado (`build` en `package.json`). `.github/workflows/ci.yml` valida cada cambio y
+  empaquetado (`electron-builder.yml`). `.github/workflows/ci.yml` valida cada cambio y
   `.github/workflows/release.yml` publica el instalador y su `.sha256` al etiquetar `vX.Y.Z`.
 - `monoDark` sustituye la paleta por `MONO_PALETTE` y desactiva la imagen de fondo.
 
